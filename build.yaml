@@ -1,0 +1,22 @@
+targets:
+  $default:
+    builders:
+      injectable_generator:injectable_builder:
+        options:
+          auto_register: true
+          class_name_pattern: ".*UseCase$|.*Repository$|.*DataSource$|.*Service$"
+          file_name_pattern: "_usecase$|_repository$|_datasource$|_service$"
+      json_serializable:json_serializable:
+        options:
+          explicit_to_json: true
+          include_if_null: false
+      freezed:freezed:
+        options:
+          union_key: type
+          union_value_case: snake
+          map: false
+          when: false
+          copy_with: true
+          to_string: true
+          from_json: true
+          to_json: true 
