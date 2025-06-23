@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
+import '../../../../core/routes/app_router.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
@@ -30,10 +31,8 @@ class _LoginFormState extends State<LoginForm> {
             SnackBar(content: Text(state.message)),
           );
         } else if (state is AuthAuthenticated) {
-          // Navigate to home page
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login successful!')),
-          );
+          // Navegar para a home após login bem-sucedido
+          AppRouter.navigateToHome(context);
         }
       },
       child: Padding(
