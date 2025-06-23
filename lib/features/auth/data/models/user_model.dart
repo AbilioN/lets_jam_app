@@ -10,7 +10,7 @@ class UserModel extends User {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'] as String,
+      id: json['id'].toString(),
       email: json['email'] as String,
       name: json['name'] as String,
       avatarUrl: json['avatar_url'] as String?,
@@ -22,7 +22,7 @@ class UserModel extends User {
       'id': id,
       'email': email,
       'name': name,
-      'avatar_url': avatarUrl,
+      if (avatarUrl != null) 'avatar_url': avatarUrl,
     };
   }
 
@@ -33,5 +33,14 @@ class UserModel extends User {
       name: user.name,
       avatarUrl: user.avatarUrl,
     );
+  }
+
+  static UserModel fromApiResponse(Map<String, dynamic> response) {
+    final userData = response['user'] as Map<String, dynamic>;
+    return UserModel.fromJson(userData);
+  }
+
+  static String? extractToken(Map<String, dynamic> response) {
+    return response['token'] as String?;
   }
 } 

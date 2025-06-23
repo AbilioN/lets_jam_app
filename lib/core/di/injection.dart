@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../network/network_info.dart';
 import '../network/network_info_impl.dart';
+import '../services/token_service.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
@@ -25,9 +26,14 @@ Future<void> configureDependencies() async {
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
 
+  // Services
+  getIt.registerLazySingleton<TokenService>(
+    () => TokenServiceImpl(getIt<SharedPreferences>()),
+  );
+
   // Data sources
   getIt.registerLazySingleton<AuthRemoteDataSource>(
-    () => AuthRemoteDataSourceImpl(getIt<Dio>()),
+    () => AuthRemoteDataSourceImpl(getIt<TokenService>()),
   );
   getIt.registerLazySingleton<AuthLocalDataSource>(
     () => AuthLocalDataSourceImpl(getIt<SharedPreferences>()),
