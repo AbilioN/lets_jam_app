@@ -45,6 +45,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     RegisterRequested event,
     Emitter<AuthState> emit,
   ) async {
+    print('🟠 AuthBloc - Iniciando registro...');
+    print('Nome: ${event.name}');
+    print('Email: ${event.email}');
+    print('Password: ${event.password}');
+    print('Password Confirmation: ${event.passwordConfirmation}');
+    
     emit(AuthLoading());
     
     final result = await registerUseCase(RegisterParams(
@@ -54,12 +60,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       passwordConfirmation: event.passwordConfirmation,
     ));
 
+    print('🟠 AuthBloc - Resultado do UseCase:');
+    print('   Result: $result');
+    print('   É Right? ${result.isRight()}');
+    print('   É Left? ${result.isLeft()}');
+    
     result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (user) => emit(AuthRegistrationSuccess(
-        message: "User registered successfully. Please check your email for verification code.",
-        email: user.email,
-      )),
+      (failure) {
+        print('🔴 AuthBloc - Falha: ${failure.message}');
+        emit(AuthError(failure.message));
+      },
+      (user) {
+        print('🟢 AuthBloc - Sucesso:');
+        print('   User ID: ${user.id}');
+        print('   User Name: ${user.name}');
+        print('   User Email: ${user.email}');
+        emit(AuthRegistrationSuccess(
+          message: "User registered successfully. Please check your email for verification code.",
+          email: user.email,
+        ));
+      },
     );
   }
 

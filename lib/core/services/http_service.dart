@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'dart:convert';
 
 class HttpService {
   final Dio _dio;
@@ -11,6 +12,7 @@ class HttpService {
     _dio.options.baseUrl = baseUrl;
     _dio.options.headers = {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       if (headers != null) ...headers,
     };
     
@@ -18,6 +20,17 @@ class HttpService {
     _dio.options.connectTimeout = const Duration(seconds: 10);
     _dio.options.receiveTimeout = const Duration(seconds: 10);
     _dio.options.sendTimeout = const Duration(seconds: 10);
+    
+    // Adicionar interceptor para garantir headers
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        print('🔵 Interceptor - Headers sendo enviados: ${options.headers}');
+        // Garantir que os headers estejam presentes
+        options.headers['Content-Type'] = 'application/json';
+        options.headers['Accept'] = 'application/json';
+        handler.next(options);
+      },
+    ));
   }
 
   Future<dynamic> get(String endpoint) async {
@@ -33,7 +46,20 @@ class HttpService {
 
   Future<dynamic> post(String endpoint, dynamic data) async {
     try {
-      final response = await _dio.post(endpoint, data: data);
+      print('🔵 HttpService - Enviando POST para: ${_dio.options.baseUrl}$endpoint');
+      print('🔵 HttpService - Headers: ${_dio.options.headers}');
+      print('🔵 HttpService - Data: $data');
+      
+      final response = await _dio.post(
+        endpoint, 
+        data: data,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
+      );
       return response.data;
     } on DioException catch (e) {
       _handleDioError(e);
@@ -67,25 +93,59 @@ class HttpService {
   void _handleDioError(DioException e) {
     if (e.response != null) {
       final statusCode = e.response!.statusCode;
-      final errorData = e.response!.data;
+      dynamic errorData = e.response!.data;
+      print('🔴 DioError status: $statusCode');
+      print('🔴 DioError data: $errorData (${errorData.runtimeType})');
+      // Se errorData vier como String, tenta decodificar
+      if (errorData is String) {
+        try {
+          errorData = json.decode(errorData);
+        } catch (_) {
+          // Se não for JSON, mantém como string
+        }
+      }
       
       switch (statusCode) {
         case 401:
           throw Exception('Credenciais inválidas');
         case 422:
-          final errors = errorData['errors'] as Map<String, dynamic>?;
-          if (errors != null) {
-            final errorMessages = errors.values
-                .expand((error) => error as List)
-                .join(', ');
-            throw Exception('Erro de validação: $errorMessages');
-          } else {
-            throw Exception(errorData['message'] ?? 'Erro de validação');
+          // Extrair mensagem do campo "message" primeiro
+          String errorMessage = 'Erro de validação';
+          
+          if (errorData is Map<String, dynamic>) {
+            // Tentar extrair a mensagem principal
+            if (errorData.containsKey('message')) {
+              errorMessage = errorData['message'] as String;
+            }
+            
+            // Se há erros específicos, adicionar os detalhes
+            if (errorData.containsKey('errors') && errorData['errors'] is Map<String, dynamic>) {
+              final errors = errorData['errors'] as Map<String, dynamic>;
+              final errorDetails = errors.values
+                  .expand((error) => error is List ? error : [error])
+                  .whereType<String>()
+                  .join(', ');
+              
+              if (errorDetails.isNotEmpty) {
+                errorMessage = '$errorMessage: $errorDetails';
+              }
+            }
+          } else if (errorData is String) {
+            errorMessage = errorData;
           }
+          
+          throw Exception(errorMessage);
         case 500:
           throw Exception('Erro interno do servidor');
         default:
-          throw Exception(errorData['message'] ?? 'Erro desconhecido');
+          // Para outros códigos de erro, tentar extrair a mensagem
+          String errorMessage = 'Erro desconhecido';
+          if (errorData is Map<String, dynamic> && errorData.containsKey('message')) {
+            errorMessage = errorData['message'] as String;
+          } else if (errorData is String) {
+            errorMessage = errorData;
+          }
+          throw Exception(errorMessage);
       }
     } else {
       if (e.type == DioExceptionType.connectionTimeout) {

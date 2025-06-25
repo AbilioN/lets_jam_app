@@ -1,6 +1,9 @@
+import 'package:dio/dio.dart';
+
 import '../../../../core/services/token_service.dart';
 import '../models/user_model.dart';
 import '../services/auth_api.dart';
+import 'dart:convert';
 
 abstract class AuthRemoteDataSource {
   Future<UserModel> login(String email, String password);
@@ -36,17 +39,29 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<UserModel> register(String name, String email, String password, String passwordConfirmation) async {
     try {
+      print('🟡 AuthRemoteDataSource - Iniciando registro...');
+      
       final result = await authApi.register(name, email, password, passwordConfirmation);
+      
+      print('🟡 AuthRemoteDataSource - Resultado da API:');
+      print('   Result: $result');
+      print('   Keys disponíveis: ${result.keys.toList()}');
       
       // Extrair o usuário da resposta usando o método estático
       final user = UserModel.fromApiResponse(result);
+      
+      print('🟡 AuthRemoteDataSource - Usuário extraído:');
+      print('   User ID: ${user.id}');
+      print('   User Name: ${user.name}');
+      print('   User Email: ${user.email}');
       
       // Para registro, não há token na resposta inicial
       // O usuário precisa verificar o email primeiro
       
       return user;
     } catch (e) {
-      throw Exception('Erro no registro: $e');
+      print('🔴 AuthRemoteDataSource - Erro no registro: $e');
+      rethrow;
     }
   }
 
@@ -79,6 +94,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       };
     } catch (e) {
       throw Exception('Erro na verificação de email: $e');
+    }
+  }
+
+  void _handleDioError(DioException e) {
+    if (e.response != null) {
+      final statusCode = e.response!.statusCode;
+      final errorData = e.response!.data;
+      print('🔴 DioError status: $statusCode');
+      print('🔴 DioError data: $errorData (${errorData.runtimeType})');
+      // ... resto do código
     }
   }
 } 
