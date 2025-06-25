@@ -4,7 +4,7 @@ import '../services/auth_api.dart';
 
 abstract class AuthRemoteDataSource {
   Future<UserModel> login(String email, String password);
-  Future<UserModel> register(String email, String password, String name);
+  Future<UserModel> register(String name, String email, String password, String passwordConfirmation);
   Future<void> logout();
 }
 
@@ -33,17 +33,15 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<UserModel> register(String email, String password, String name) async {
+  Future<UserModel> register(String name, String email, String password, String passwordConfirmation) async {
     try {
-      final result = await authApi.register(name, email, password);
+      final result = await authApi.register(name, email, password, passwordConfirmation);
       
-      final user = result['user'] as UserModel;
+      // Extrair o usuário da resposta usando o método estático
+      final user = UserModel.fromApiResponse(result);
       
-      // Salvar token se fornecido
-      if (result.containsKey('token')) {
-        final token = result['token'] as String;
-        await tokenService.saveToken(token);
-      }
+      // Para registro, não há token na resposta inicial
+      // O usuário precisa verificar o email primeiro
       
       return user;
     } catch (e) {

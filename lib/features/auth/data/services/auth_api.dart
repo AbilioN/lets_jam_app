@@ -33,24 +33,20 @@ class AuthApi {
     }
   }
 
-  Future<Map<String, dynamic>> register(String name, String email, String password) async {
+  Future<Map<String, dynamic>> register(String name, String email, String password, String passwordConfirmation) async {
     final response = await _httpService.post(
-      '/auth/register',
+      '/register',
       {
         'name': name,
         'email': email,
         'password': password,
+        'password_confirmation': passwordConfirmation,
       },
     );
 
-    if (response['success'] == true) {
-      return {
-        'user': response['user'],
-        'token': response['token'],
-      };
-    } else {
-      throw Exception(response['message'] ?? 'Erro no registro');
-    }
+    // A API retorna 201 para sucesso no registro
+    // Não há campo 'success' na resposta, apenas 'message' e 'user'
+    return response;
   }
 
   Future<void> logout() async {

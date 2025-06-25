@@ -128,6 +128,7 @@ class _RegisterFormState extends State<RegisterForm> {
                                         name: _nameController.text,
                                         email: _emailController.text,
                                         password: _passwordController.text,
+                                        passwordConfirmation: _confirmPasswordController.text,
                                       ),
                                     );
                               }

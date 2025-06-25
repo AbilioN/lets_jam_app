@@ -43,4 +43,8 @@ class UserModel extends User {
   static String? extractToken(Map<String, dynamic> response) {
     return response['token'] as String?;
   }
+
+  static String? extractMessage(Map<String, dynamic> response) {
+    return response['message'] as String?;
+  }
 } 
