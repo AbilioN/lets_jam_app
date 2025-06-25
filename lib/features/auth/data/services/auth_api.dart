@@ -3,15 +3,9 @@ import '../../../../core/services/http_service.dart';
 
 class AuthApi {
   late final HttpService _httpService;
-  String? _authToken;
 
   AuthApi() {
     _httpService = HttpService(baseUrl: ApiConfig.baseUrl);
-  }
-
-  void setAuthToken(String token) {
-    _authToken = token;
-    _httpService.setAuthToken(token);
   }
 
   Future<Map<String, dynamic>> login(String email, String password) async {
@@ -49,12 +43,19 @@ class AuthApi {
     return response;
   }
 
-  Future<void> logout() async {
-    await _httpService.post('/auth/logout', {});
+  Future<Map<String, dynamic>> verifyEmail(String email, String code) async {
+    final response = await _httpService.post(
+      '/verify-email',
+      {
+        'email': email,
+        'code': code,
+      },
+    );
+
+    return response;
   }
 
-  void removeAuthToken() {
-    _authToken = null;
-    _httpService.removeAuthToken();
+  Future<void> logout() async {
+    await _httpService.post('/auth/logout', {});
   }
 } 

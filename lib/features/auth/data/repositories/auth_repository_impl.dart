@@ -66,4 +66,18 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(CacheFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, Map<String, String>>> verifyEmail(String email, String code) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final result = await remoteDataSource.verifyEmail(email, code);
+        return Right(result);
+      } catch (e) {
+        return Left(ServerFailure(e.toString()));
+      }
+    } else {
+      return Left(NetworkFailure('No internet connection'));
+    }
+  }
 } 

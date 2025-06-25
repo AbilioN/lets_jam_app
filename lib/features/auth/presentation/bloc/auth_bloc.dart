@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import '../../domain/entities/user.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
+import '../../domain/usecases/verify_email_usecase.dart';
 
 part 'auth_event.dart';
 part 'auth_state.dart';
@@ -10,13 +11,16 @@ part 'auth_state.dart';
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase loginUseCase;
   final RegisterUseCase registerUseCase;
+  final VerifyEmailUseCase verifyEmailUseCase;
 
   AuthBloc({
     required this.loginUseCase,
     required this.registerUseCase,
+    required this.verifyEmailUseCase,
   }) : super(AuthInitial()) {
     on<LoginRequested>(_onLoginRequested);
     on<RegisterRequested>(_onRegisterRequested);
+    on<VerifyEmailRequested>(_onVerifyEmailRequested);
     on<LogoutRequested>(_onLogoutRequested);
   }
 
@@ -52,7 +56,30 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     result.fold(
       (failure) => emit(AuthError(failure.message)),
-      (user) => emit(AuthAuthenticated(user)),
+      (user) => emit(AuthRegistrationSuccess(
+        message: "User registered successfully. Please check your email for verification code.",
+        email: user.email,
+      )),
+    );
+  }
+
+  Future<void> _onVerifyEmailRequested(
+    VerifyEmailRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    
+    final result = await verifyEmailUseCase(VerifyEmailParams(
+      email: event.email,
+      code: event.code,
+    ));
+
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (verificationResult) => emit(AuthEmailVerified(
+        message: verificationResult['message']!,
+        email: verificationResult['email']!,
+      )),
     );
   }
 

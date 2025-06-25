@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
-import '../../../../core/routes/app_router.dart';
+import '../pages/email_verification_page.dart';
 
 class RegisterForm extends StatefulWidget {
   const RegisterForm({super.key});
@@ -34,9 +34,20 @@ class _RegisterFormState extends State<RegisterForm> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.message)),
           );
-        } else if (state is AuthAuthenticated) {
-          // Navegar para a home após registro bem-sucedido
-          AppRouter.navigateToHome(context);
+        } else if (state is AuthRegistrationSuccess) {
+          // Mostrar mensagem de sucesso
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Navegar para a página de verificação de email
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => EmailVerificationPage(email: state.email),
+            ),
+          );
         }
       },
       child: Padding(

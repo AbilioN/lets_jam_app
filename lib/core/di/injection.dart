@@ -12,6 +12,7 @@ import '../../features/auth/data/services/auth_api.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/register_usecase.dart';
+import '../../features/auth/domain/usecases/verify_email_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 
 final getIt = GetIt.instance;
@@ -57,12 +58,16 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<RegisterUseCase>(
     () => RegisterUseCase(getIt<AuthRepository>()),
   );
+  getIt.registerLazySingleton<VerifyEmailUseCase>(
+    () => VerifyEmailUseCase(getIt<AuthRepository>()),
+  );
 
   // Blocs
   getIt.registerFactory<AuthBloc>(
     () => AuthBloc(
       loginUseCase: getIt<LoginUseCase>(),
       registerUseCase: getIt<RegisterUseCase>(),
+      verifyEmailUseCase: getIt<VerifyEmailUseCase>(),
     ),
   );
 

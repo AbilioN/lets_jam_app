@@ -37,4 +37,17 @@ class RegisterRequested extends AuthEvent {
   List<Object> get props => [name, email, password, passwordConfirmation];
 }
 
+class VerifyEmailRequested extends AuthEvent {
+  final String email;
+  final String code;
+
+  const VerifyEmailRequested({
+    required this.email,
+    required this.code,
+  });
+
+  @override
+  List<Object> get props => [email, code];
+}
+
 class LogoutRequested extends AuthEvent {} 

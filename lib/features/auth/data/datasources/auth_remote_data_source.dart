@@ -5,6 +5,7 @@ import '../services/auth_api.dart';
 abstract class AuthRemoteDataSource {
   Future<UserModel> login(String email, String password);
   Future<UserModel> register(String name, String email, String password, String passwordConfirmation);
+  Future<Map<String, String>> verifyEmail(String email, String code);
   Future<void> logout();
 }
 
@@ -53,10 +54,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<void> logout() async {
     try {
       // Adicionar token de autorização se disponível
-      final token = await tokenService.getToken();
-      if (token != null) {
-        authApi.setAuthToken(token);
-      }
+      // final token = await tokenService.getToken();
+      // if (token != null) {
+      //   authApi.setAuthToken(token);
+      // }
       
       await authApi.logout();
       
@@ -64,6 +65,20 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       await tokenService.clearToken();
     } catch (e) {
       throw Exception('Erro no logout: $e');
+    }
+  }
+
+  @override
+  Future<Map<String, String>> verifyEmail(String email, String code) async {
+    try {
+      final result = await authApi.verifyEmail(email, code);
+      
+      return {
+        'message': result['message'] as String,
+        'email': result['email'] as String,
+      };
+    } catch (e) {
+      throw Exception('Erro na verificação de email: $e');
     }
   }
 } 

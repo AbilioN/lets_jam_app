@@ -20,7 +20,31 @@ class AuthAuthenticated extends AuthState {
   List<Object> get props => [user];
 }
 
-class AuthUnauthenticated extends AuthState {}
+class AuthRegistrationSuccess extends AuthState {
+  final String message;
+  final String email;
+
+  const AuthRegistrationSuccess({
+    required this.message,
+    required this.email,
+  });
+
+  @override
+  List<Object> get props => [message, email];
+}
+
+class AuthEmailVerified extends AuthState {
+  final String message;
+  final String email;
+
+  const AuthEmailVerified({
+    required this.message,
+    required this.email,
+  });
+
+  @override
+  List<Object> get props => [message, email];
+}
 
 class AuthError extends AuthState {
   final String message;
@@ -29,4 +53,6 @@ class AuthError extends AuthState {
 
   @override
   List<Object> get props => [message];
-} 
+}
+
+class AuthUnauthenticated extends AuthState {} 
