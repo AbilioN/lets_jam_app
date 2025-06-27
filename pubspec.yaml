@@ -54,6 +54,9 @@ dependencies:
   equatable: ^2.0.5
   dartz: ^0.10.1
   
+  # Real-time Communication
+  pusher_channels_flutter: ^2.0.3
+  
   # Code Generation
   json_annotation: ^4.8.1
   freezed_annotation: ^2.4.1
