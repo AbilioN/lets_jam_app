@@ -31,13 +31,15 @@ class AppRouter {
           builder: (_) => const HomePage(),
         );
       case chat:
-        final args = settings.arguments as Map<String, String>?;
-        final channelName = args?['channelName'] ?? 'general';
-        final currentUser = args?['currentUser'] ?? 'Anonymous';
+        final args = settings.arguments as Map<String, dynamic>?;
+        final currentUserId = args?['currentUserId'] as int? ?? 1;
+        final otherUserId = args?['otherUserId'] as int?;
+        final otherUserType = args?['otherUserType'] as String?;
         return MaterialPageRoute(
           builder: (_) => ChatPage(
-            channelName: channelName,
-            currentUser: currentUser,
+            currentUserId: currentUserId,
+            otherUserId: otherUserId,
+            otherUserType: otherUserType,
           ),
         );
       default:
@@ -68,14 +70,16 @@ class AppRouter {
   }
 
   static void navigateToChat(BuildContext context, {
-    required String channelName,
-    required String currentUser,
+    required int currentUserId,
+    int? otherUserId,
+    String? otherUserType,
   }) {
     Navigator.of(context).pushNamed(
       chat,
       arguments: {
-        'channelName': channelName,
-        'currentUser': currentUser,
+        'currentUserId': currentUserId,
+        'otherUserId': otherUserId,
+        'otherUserType': otherUserType,
       },
     );
   }

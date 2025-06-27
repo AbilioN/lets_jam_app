@@ -12,18 +12,20 @@ class ChatInitial extends ChatState {}
 class ChatLoading extends ChatState {}
 
 class ChatConnected extends ChatState {
-  final String channelName;
+  final int currentUserId;
+  final int? otherUserId;
   final List<ChatMessage> messages;
-  final String currentUser;
+  final List<ChatConversation> conversations;
 
   const ChatConnected({
-    required this.channelName,
+    required this.currentUserId,
+    this.otherUserId,
     required this.messages,
-    required this.currentUser,
+    required this.conversations,
   });
 
   @override
-  List<Object> get props => [channelName, messages, currentUser];
+  List<Object> get props => [currentUserId, otherUserId ?? 0, messages, conversations];
 }
 
 class ChatError extends ChatState {

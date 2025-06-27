@@ -1,17 +1,19 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import '../../../../core/services/pusher_service.dart';
+import '../../../../core/services/chat_service.dart';
 
 part 'chat_event.dart';
 part 'chat_state.dart';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
+  final ChatService _chatService = ChatService.instance;
+
   ChatBloc() : super(ChatInitial()) {
     on<ChatInitialized>(_onChatInitialized);
     on<MessageSent>(_onMessageSent);
     on<MessageReceived>(_onMessageReceived);
-    on<UserJoined>(_onUserJoined);
-    on<UserLeft>(_onUserLeft);
+    on<LoadConversation>(_onLoadConversation);
+    on<LoadConversations>(_onLoadConversations);
     on<ChatDisconnected>(_onChatDisconnected);
   }
 
@@ -22,33 +24,31 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     emit(ChatLoading());
     
     try {
-      // Configurar callbacks do Pusher
-      PusherService.onMessageReceived = (message, sender, timestamp) {
-        add(MessageReceived(message: message, sender: sender, timestamp: timestamp));
+      // Configurar callbacks do ChatService
+      ChatService.onMessageReceived = (message) {
+        add(MessageReceived(message: message));
       };
       
-      PusherService.onUserJoined = (user, action) {
-        add(UserJoined(user: user, action: action));
+      ChatService.onError = (error) {
+        print('🔴 ChatBloc - Erro do ChatService: $error');
       };
       
-      PusherService.onUserLeft = (user, action) {
-        add(UserLeft(user: user, action: action));
-      };
+      // Inicializar ChatService
+      await _chatService.initialize();
       
-      // Inicializar Pusher e se inscrever no canal
-      await PusherService.initialize();
-      await PusherService.subscribeToChatChannel(event.channelName);
-      
-      // Notificar que o usuário entrou no canal
-      await PusherService.joinChannel(event.channelName, event.currentUser);
-      
-      // Carregar mensagens existentes
-      final messages = PusherService.messages;
+      // Escutar conversa se especificada
+      if (event.otherUserId != null) {
+        await _chatService.listenToConversation(
+          event.currentUserId,
+          event.otherUserId!,
+        );
+      }
       
       emit(ChatConnected(
-        channelName: event.channelName,
-        messages: messages,
-        currentUser: event.currentUser,
+        currentUserId: event.currentUserId,
+        otherUserId: event.otherUserId,
+        messages: ChatService.messages,
+        conversations: ChatService.conversations,
       ));
       
     } catch (e) {
@@ -64,14 +64,23 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       final currentState = state as ChatConnected;
       
       try {
-        await PusherService.sendMessage(
-          currentState.channelName,
-          event.message,
-          event.sender,
+        emit(ChatLoading());
+        
+        await _chatService.sendMessage(
+          content: event.content,
+          receiverType: event.receiverType,
+          receiverId: event.receiverId,
         );
         
         // A mensagem será adicionada através do evento MessageReceived
-        // que é disparado pelo callback do Pusher
+        // que é disparado pelo callback do ChatService
+        
+        emit(ChatConnected(
+          currentUserId: currentState.currentUserId,
+          otherUserId: currentState.otherUserId,
+          messages: ChatService.messages,
+          conversations: ChatService.conversations,
+        ));
         
       } catch (e) {
         emit(ChatError('Erro ao enviar mensagem: $e'));
@@ -85,70 +94,68 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ) {
     if (state is ChatConnected) {
       final currentState = state as ChatConnected;
-      final newMessage = ChatMessage(
-        message: event.message,
-        sender: event.sender,
-        timestamp: event.timestamp,
-      );
-      
-      final updatedMessages = List<ChatMessage>.from(currentState.messages)
-        ..add(newMessage);
       
       emit(ChatConnected(
-        channelName: currentState.channelName,
-        messages: updatedMessages,
-        currentUser: currentState.currentUser,
+        currentUserId: currentState.currentUserId,
+        otherUserId: currentState.otherUserId,
+        messages: ChatService.messages,
+        conversations: ChatService.conversations,
       ));
     }
   }
 
-  void _onUserJoined(
-    UserJoined event,
+  Future<void> _onLoadConversation(
+    LoadConversation event,
     Emitter<ChatState> emit,
-  ) {
+  ) async {
     if (state is ChatConnected) {
       final currentState = state as ChatConnected;
       
-      // Adicionar mensagem de sistema
-      final systemMessage = ChatMessage(
-        message: '${event.user} entrou no chat',
-        sender: 'System',
-        timestamp: DateTime.now().toIso8601String(),
-      );
-      
-      final updatedMessages = List<ChatMessage>.from(currentState.messages)
-        ..add(systemMessage);
-      
-      emit(ChatConnected(
-        channelName: currentState.channelName,
-        messages: updatedMessages,
-        currentUser: currentState.currentUser,
-      ));
+      try {
+        emit(ChatLoading());
+        
+        final messages = await _chatService.getConversation(
+          otherUserType: event.otherUserType,
+          otherUserId: event.otherUserId,
+          page: event.page,
+          perPage: event.perPage,
+        );
+        
+        emit(ChatConnected(
+          currentUserId: currentState.currentUserId,
+          otherUserId: event.otherUserId,
+          messages: messages,
+          conversations: ChatService.conversations,
+        ));
+        
+      } catch (e) {
+        emit(ChatError('Erro ao carregar conversa: $e'));
+      }
     }
   }
 
-  void _onUserLeft(
-    UserLeft event,
+  Future<void> _onLoadConversations(
+    LoadConversations event,
     Emitter<ChatState> emit,
-  ) {
+  ) async {
     if (state is ChatConnected) {
       final currentState = state as ChatConnected;
       
-      // Adicionar mensagem de sistema
-      final systemMessage = ChatMessage(
-        message: '${event.user} saiu do chat',
-        sender: 'System',
-        timestamp: DateTime.now().toIso8601String(),
-      );
-      
-      final updatedMessages = List<ChatMessage>.from(currentState.messages)
-        ..add(systemMessage);
-      
-      emit(ChatConnected(
-        channelName: currentState.channelName,
-        messages: updatedMessages,
-        currentUser: currentState.currentUser,
-      ));
+      try {
+        emit(ChatLoading());
+        
+        final conversations = await _chatService.getConversations();
+        
+        emit(ChatConnected(
+          currentUserId: currentState.currentUserId,
+          otherUserId: currentState.otherUserId,
+          messages: ChatService.messages,
+          conversations: conversations,
+        ));
+        
+      } catch (e) {
+        emit(ChatError('Erro ao carregar conversas: $e'));
+      }
     }
   }
 
@@ -157,13 +164,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     Emitter<ChatState> emit,
   ) async {
     try {
-      if (state is ChatConnected) {
-        final currentState = state as ChatConnected;
-        // Notificar que o usuário saiu do canal
-        await PusherService.leaveChannel(currentState.channelName, currentState.currentUser);
-      }
-      
-      await PusherService.disconnect();
+      await _chatService.disconnect();
       emit(ChatDisconnectedState());
     } catch (e) {
       emit(ChatError('Erro ao desconectar: $e'));

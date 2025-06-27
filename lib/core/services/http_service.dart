@@ -33,9 +33,29 @@ class HttpService {
     ));
   }
 
-  Future<dynamic> get(String endpoint) async {
+  Future<dynamic> get(String endpoint, {Map<String, String>? headers}) async {
     try {
-      final response = await _dio.get(endpoint);
+      print('🔵 HttpService - Enviando GET para: ${_dio.options.baseUrl}$endpoint');
+      print('🔵 HttpService - Custom Headers: $headers');
+      
+      // Combinar headers padrão com headers customizados
+      final requestHeaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (headers != null) ...headers,
+      };
+      
+      final response = await _dio.get(
+        endpoint,
+        options: Options(
+          headers: requestHeaders,
+        ),
+      );
+      
+      print('🔵 HttpService - Resposta recebida:');
+      print('   Status Code: ${response.statusCode}');
+      print('   Data: ${response.data}');
+      
       return response.data;
     } on DioException catch (e) {
       _handleDioError(e);
@@ -44,20 +64,25 @@ class HttpService {
     }
   }
 
-  Future<dynamic> post(String endpoint, dynamic data) async {
+  Future<dynamic> post(String endpoint, dynamic data, {Map<String, String>? headers}) async {
     try {
       print('🔵 HttpService - Enviando POST para: ${_dio.options.baseUrl}$endpoint');
       print('🔵 HttpService - Headers: ${_dio.options.headers}');
+      print('🔵 HttpService - Custom Headers: $headers');
       print('🔵 HttpService - Data: $data');
+      
+      // Combinar headers padrão com headers customizados
+      final requestHeaders = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (headers != null) ...headers,
+      };
       
       final response = await _dio.post(
         endpoint, 
         data: data,
         options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
+          headers: requestHeaders,
         ),
       );
       

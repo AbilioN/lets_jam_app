@@ -85,8 +85,9 @@ class HomePage extends StatelessWidget {
   void _openChat(BuildContext context) {
     AppRouter.navigateToChat(
       context,
-      channelName: 'general',
-      currentUser: 'Usuário',
+      currentUserId: 1, // ID do usuário atual (deve vir do login)
+      otherUserId: 1, // ID do admin
+      otherUserType: 'admin',
     );
   }
 
@@ -95,8 +96,9 @@ class HomePage extends StatelessWidget {
   }
 
   void _showChannelDialog(BuildContext context) {
-    final channelController = TextEditingController();
-    final userController = TextEditingController();
+    final userIdController = TextEditingController();
+    final otherUserIdController = TextEditingController();
+    final otherUserTypeController = TextEditingController(text: 'admin');
 
     showDialog(
       context: context,
@@ -106,18 +108,28 @@ class HomePage extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              controller: channelController,
+              controller: userIdController,
               decoration: const InputDecoration(
-                labelText: 'Nome do Canal',
-                hintText: 'ex: musica, geral, etc.',
+                labelText: 'Seu User ID',
+                hintText: 'ex: 1, 2, 3...',
               ),
+              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: userController,
+              controller: otherUserIdController,
               decoration: const InputDecoration(
-                labelText: 'Seu Nome',
-                hintText: 'Como você quer ser chamado?',
+                labelText: 'ID do Outro Usuário',
+                hintText: 'ex: 1, 2, 3...',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: otherUserTypeController,
+              decoration: const InputDecoration(
+                labelText: 'Tipo do Outro Usuário',
+                hintText: 'ex: admin, user',
               ),
             ),
           ],
@@ -129,15 +141,17 @@ class HomePage extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              final channel = channelController.text.trim();
-              final user = userController.text.trim();
+              final userId = int.tryParse(userIdController.text.trim());
+              final otherUserId = int.tryParse(otherUserIdController.text.trim());
+              final otherUserType = otherUserTypeController.text.trim();
               
-              if (channel.isNotEmpty && user.isNotEmpty) {
+              if (userId != null && otherUserId != null && otherUserType.isNotEmpty) {
                 Navigator.of(context).pop();
                 AppRouter.navigateToChat(
                   context,
-                  channelName: channel,
-                  currentUser: user,
+                  currentUserId: userId,
+                  otherUserId: otherUserId,
+                  otherUserType: otherUserType,
                 );
               }
             },
