@@ -32,12 +32,12 @@ class AppRouter {
         );
       case chat:
         final args = settings.arguments as Map<String, dynamic>?;
-        final currentUserId = args?['currentUserId'] as int? ?? 1;
+        final chatId = args?['chatId'] as int?;
         final otherUserId = args?['otherUserId'] as int?;
         final otherUserType = args?['otherUserType'] as String?;
         return MaterialPageRoute(
           builder: (_) => ChatPage(
-            currentUserId: currentUserId,
+            chatId: chatId,
             otherUserId: otherUserId,
             otherUserType: otherUserType,
           ),
@@ -70,14 +70,14 @@ class AppRouter {
   }
 
   static void navigateToChat(BuildContext context, {
-    required int currentUserId,
+    int? chatId,
     int? otherUserId,
     String? otherUserType,
   }) {
     Navigator.of(context).pushNamed(
       chat,
       arguments: {
-        'currentUserId': currentUserId,
+        'chatId': chatId,
         'otherUserId': otherUserId,
         'otherUserType': otherUserType,
       },

@@ -4,13 +4,13 @@ import '../bloc/chat_bloc.dart';
 import '../../../../core/services/chat_service.dart';
 
 class ChatWidget extends StatefulWidget {
-  final int currentUserId;
+  final int? chatId;
   final int? otherUserId;
   final String? otherUserType;
 
   const ChatWidget({
     super.key,
-    required this.currentUserId,
+    this.chatId,
     this.otherUserId,
     this.otherUserType,
   });
@@ -29,8 +29,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     // Inicializar o chat quando o widget for criado
     context.read<ChatBloc>().add(
           ChatInitialized(
-            currentUserId: widget.currentUserId,
-            otherUserId: widget.otherUserId,
+            chatId: widget.chatId,
           ),
         );
   }
@@ -44,12 +43,13 @@ class _ChatWidgetState extends State<ChatWidget> {
 
   void _sendMessage() {
     final content = _messageController.text.trim();
-    if (content.isNotEmpty && widget.otherUserId != null) {
+    if (content.isNotEmpty) {
       context.read<ChatBloc>().add(
             MessageSent(
               content: content,
-              receiverType: widget.otherUserType ?? 'admin',
-              receiverId: widget.otherUserId!,
+              chatId: widget.chatId,
+              otherUserId: widget.otherUserId,
+              otherUserType: widget.otherUserType,
             ),
           );
       _messageController.clear();
@@ -126,8 +126,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                     onPressed: () {
                       context.read<ChatBloc>().add(
                             ChatInitialized(
-                              currentUserId: widget.currentUserId,
-                              otherUserId: widget.otherUserId,
+                              chatId: widget.chatId,
                             ),
                           );
                     },
@@ -166,22 +165,25 @@ class _ChatWidgetState extends State<ChatWidget> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.otherUserId != null 
-                                  ? 'Chat com ${widget.otherUserType ?? 'Admin'}'
-                                  : 'Chat',
+                              widget.chatId != null 
+                                  ? 'Chat #${widget.chatId}'
+                                  : widget.otherUserId != null
+                                      ? 'Chat com ${widget.otherUserType ?? 'Usuário'}'
+                                      : 'Chat',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
                             ),
-                            Text(
-                              'Usuário ID: ${widget.currentUserId}',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
+                            if (widget.chatId != null)
+                              Text(
+                                'Chat ID: ${widget.chatId}',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -235,7 +237,8 @@ class _ChatWidgetState extends State<ChatWidget> {
                           itemCount: state.messages.length,
                           itemBuilder: (context, index) {
                             final message = state.messages[index];
-                            final isOwnMessage = message.senderId == widget.currentUserId;
+                            // TODO: Obter o ID do usuário atual do AuthBloc ou similar
+                            final isOwnMessage = message.senderId == 1; // Temporário
 
                             return _buildMessageBubble(message, isOwnMessage);
                           },
@@ -277,7 +280,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                       ),
                       const SizedBox(width: 8),
                       FloatingActionButton(
-                        onPressed: widget.otherUserId != null ? _sendMessage : null,
+                        onPressed: _sendMessage,
                         mini: true,
                         child: const Icon(Icons.send),
                       ),
@@ -306,9 +309,9 @@ class _ChatWidgetState extends State<ChatWidget> {
           if (!isOwnMessage) ...[
             CircleAvatar(
               radius: 16,
-              backgroundColor: _getAvatarColor(message.senderName),
+              backgroundColor: _getAvatarColor(message.senderType),
               child: Text(
-                message.senderName.isNotEmpty ? message.senderName[0].toUpperCase() : '?',
+                message.senderType.isNotEmpty ? message.senderType[0].toUpperCase() : '?',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -331,7 +334,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                 children: [
                   if (!isOwnMessage) ...[
                     Text(
-                      message.senderName,
+                      '${message.senderType} (ID: ${message.senderId})',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
@@ -364,7 +367,7 @@ class _ChatWidgetState extends State<ChatWidget> {
               radius: 16,
               backgroundColor: Theme.of(context).primaryColor,
               child: Text(
-                message.senderName.isNotEmpty ? message.senderName[0].toUpperCase() : '?',
+                message.senderType.isNotEmpty ? message.senderType[0].toUpperCase() : '?',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -377,7 +380,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     );
   }
 
-  Color _getAvatarColor(String name) {
+  Color _getAvatarColor(String senderType) {
     final colors = [
       Colors.red,
       Colors.blue,
@@ -389,7 +392,7 @@ class _ChatWidgetState extends State<ChatWidget> {
       Colors.indigo,
     ];
     
-    final index = name.hashCode % colors.length;
+    final index = senderType.hashCode % colors.length;
     return colors[index];
   }
 

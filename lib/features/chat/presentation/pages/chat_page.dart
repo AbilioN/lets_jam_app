@@ -4,13 +4,13 @@ import '../bloc/chat_bloc.dart';
 import '../widgets/chat_widget.dart';
 
 class ChatPage extends StatelessWidget {
-  final int currentUserId;
+  final int? chatId;
   final int? otherUserId;
   final String? otherUserType;
 
   const ChatPage({
     super.key,
-    required this.currentUserId,
+    this.chatId,
     this.otherUserId,
     this.otherUserType,
   });
@@ -21,7 +21,7 @@ class ChatPage extends StatelessWidget {
       body: BlocProvider<ChatBloc>(
         create: (context) => ChatBloc(),
         child: ChatWidget(
-          currentUserId: currentUserId,
+          chatId: chatId,
           otherUserId: otherUserId,
           otherUserType: otherUserType,
         ),

@@ -2,229 +2,318 @@
 // Este arquivo demonstra como usar o ChatService em diferentes cenários
 
 import 'package:flutter/material.dart';
-import '../../core/services/chat_service.dart';
-import '../../core/routes/app_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:letsjam/core/services/chat_service.dart';
+import 'package:letsjam/core/services/token_service.dart';
+import 'package:letsjam/core/di/injection.dart';
+import 'package:letsjam/features/chat/presentation/bloc/chat_bloc.dart';
+import 'package:letsjam/features/chat/presentation/pages/chat_page.dart';
+
+/// Exemplo de uso do sistema de chat atualizado
+/// 
+/// Este arquivo demonstra como usar o ChatService e ChatBloc
+/// com a nova infraestrutura baseada em chats (chat_id)
 
 class ChatExampleUsage {
   
-  /// Exemplo 1: Inicializar chat e escutar mensagens
-  static Future<void> initializeChatExample() async {
+  /// Exemplo 1: Uso direto do ChatService
+  static Future<void> exampleDirectUsage() async {
+    print('🟡 Iniciando exemplo de uso direto do ChatService...');
+    
     try {
-      // Inicializar o ChatService
-      await ChatService.instance.initialize();
+      // 1. Inicializar o ChatService
+      final chatService = ChatService.instance;
+      await chatService.initialize();
       
-      // Configurar callbacks para receber mensagens
-      ChatService.onMessageReceived = (message) {
-        print('🟢 Nova mensagem recebida: ${message.content}');
-        print('   De: ${message.senderName} (${message.senderType})');
-        print('   Para: ${message.receiverType} ID ${message.receiverId}');
-        print('   Horário: ${message.createdAt}');
-      };
-      
-      ChatService.onError = (error) {
-        print('🔴 Erro no chat: $error');
-      };
-      
-      print('🟢 Chat inicializado com sucesso!');
-      
-    } catch (e) {
-      print('🔴 Erro ao inicializar chat: $e');
-    }
-  }
-  
-  /// Exemplo 2: Escutar conversa específica
-  static Future<void> listenToConversationExample() async {
-    try {
-      const currentUserId = 5; // ID do usuário atual
-      const otherUserId = 1;   // ID do admin
-      
-      await ChatService.instance.listenToConversation(
-        currentUserId,
-        otherUserId,
+      // 2. Criar um chat privado
+      final chat = await chatService.createPrivateChat(
+        otherUserId: 2,
+        otherUserType: 'user',
       );
       
-      print('🟢 Escutando conversa entre usuário $currentUserId e admin $otherUserId');
+      print('🟢 Chat privado criado: ${chat.name} (ID: ${chat.id})');
       
-    } catch (e) {
-      print('🔴 Erro ao escutar conversa: $e');
-    }
-  }
-  
-  /// Exemplo 3: Enviar mensagem
-  static Future<void> sendMessageExample() async {
-    try {
-      final message = await ChatService.instance.sendMessage(
+      // 3. Escutar mensagens do chat
+      await chatService.listenToChat(chat.id);
+      
+      // 4. Enviar uma mensagem
+      final message = await chatService.sendMessageToChat(
+        chatId: chat.id,
         content: 'Olá! Como posso ajudar?',
-        receiverType: 'admin',
-        receiverId: 1,
       );
       
-      print('🟢 Mensagem enviada com sucesso!');
-      print('   ID: ${message.id}');
-      print('   Conteúdo: ${message.content}');
-      print('   Horário: ${message.createdAt}');
+      print('🟢 Mensagem enviada: ${message.content}');
       
-    } catch (e) {
-      print('🔴 Erro ao enviar mensagem: $e');
-    }
-  }
-  
-  /// Exemplo 4: Carregar conversa
-  static Future<void> loadConversationExample() async {
-    try {
-      final messages = await ChatService.instance.getConversation(
-        otherUserType: 'admin',
-        otherUserId: 1,
-        page: 1,
-        perPage: 50,
+      // 5. Buscar conversa
+      final conversation = await chatService.getConversation(
+        otherUserId: 2,
+        otherUserType: 'user',
       );
       
-      print('🟢 Conversa carregada com sucesso!');
-      print('   Total de mensagens: ${messages.length}');
+      print('🟢 Conversa carregada: ${conversation.messages.length} mensagens');
       
-      for (final message in messages) {
-        print('   - ${message.senderName}: ${message.content}');
-      }
+      // 6. Listar todos os chats
+      final chats = await chatService.getChats();
+      print('🟢 Total de chats: ${chats.length}');
       
     } catch (e) {
-      print('🔴 Erro ao carregar conversa: $e');
+      print('🔴 Erro no exemplo: $e');
     }
   }
   
-  /// Exemplo 5: Carregar lista de conversas
-  static Future<void> loadConversationsExample() async {
+  /// Exemplo 2: Criar chat em grupo
+  static Future<void> exampleGroupChat() async {
+    print('🟡 Iniciando exemplo de chat em grupo...');
+    
     try {
-      final conversations = await ChatService.instance.getConversations();
+      final chatService = ChatService.instance;
+      await chatService.initialize();
       
-      print('🟢 Conversas carregadas com sucesso!');
-      print('   Total de conversas: ${conversations.length}');
-      
-      for (final conversation in conversations) {
-        print('   - Conversa com ${conversation.otherUserType} ID ${conversation.otherUserId}');
-        print('     Mensagens: ${conversation.messageCount}');
-        print('     Não lidas: ${conversation.unreadCount}');
-        print('     Última mensagem: ${conversation.lastMessageAt}');
-      }
-      
-    } catch (e) {
-      print('🔴 Erro ao carregar conversas: $e');
-    }
-  }
-  
-  /// Exemplo 6: Admin enviando mensagem
-  static Future<void> adminSendMessageExample() async {
-    try {
-      final message = await ChatService.instance.adminSendMessage(
-        content: 'Olá! Sou o administrador. Como posso ajudar?',
-        userId: 5, // ID do usuário que receberá a mensagem
+      // Criar chat em grupo
+      final groupChat = await chatService.createGroupChat(
+        name: 'Grupo de Suporte',
+        description: 'Chat para suporte geral',
+        participants: [
+          ChatParticipant(userId: 1, userType: 'admin'),
+          ChatParticipant(userId: 2, userType: 'user'),
+          ChatParticipant(userId: 3, userType: 'admin'),
+        ],
       );
       
-      print('🟢 Mensagem de admin enviada com sucesso!');
-      print('   ID: ${message.id}');
-      print('   Conteúdo: ${message.content}');
+      print('🟢 Chat em grupo criado: ${groupChat.name} (ID: ${groupChat.id})');
       
-    } catch (e) {
-      print('🔴 Erro ao enviar mensagem de admin: $e');
-    }
-  }
-  
-  /// Exemplo 7: Admin carregando conversa
-  static Future<void> adminLoadConversationExample() async {
-    try {
-      final messages = await ChatService.instance.adminGetConversation(
-        userId: 5, // ID do usuário
-        page: 1,
-        perPage: 50,
+      // Escutar o grupo
+      await chatService.listenToChat(groupChat.id);
+      
+      // Enviar mensagem para o grupo
+      final message = await chatService.sendMessageToChat(
+        chatId: groupChat.id,
+        content: 'Bem-vindos ao grupo de suporte!',
       );
       
-      print('🟢 Conversa de admin carregada com sucesso!');
-      print('   Total de mensagens: ${messages.length}');
+      print('🟢 Mensagem enviada para o grupo: ${message.content}');
       
     } catch (e) {
-      print('🔴 Erro ao carregar conversa de admin: $e');
+      print('🔴 Erro no chat em grupo: $e');
     }
   }
   
-  /// Exemplo 8: Desconectar do chat
-  static Future<void> disconnectExample() async {
-    try {
-      await ChatService.instance.disconnect();
-      print('🟢 Chat desconectado com sucesso!');
-      
-    } catch (e) {
-      print('🔴 Erro ao desconectar: $e');
-    }
-  }
-  
-  /// Exemplo 9: Navegação para chat usando AppRouter
-  static void navigateToChatExample(BuildContext context) {
-    // Navegar para chat com admin
-    AppRouter.navigateToChat(
-      context,
-      currentUserId: 5,
-      otherUserId: 1,
-      otherUserType: 'admin',
-    );
-  }
-  
-  /// Exemplo 10: Widget de exemplo completo
-  static Widget buildExampleWidget() {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Exemplo de Chat'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ElevatedButton(
-              onPressed: () => initializeChatExample(),
-              child: const Text('1. Inicializar Chat'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () => listenToConversationExample(),
-              child: const Text('2. Escutar Conversa'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () => sendMessageExample(),
-              child: const Text('3. Enviar Mensagem'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () => loadConversationExample(),
-              child: const Text('4. Carregar Conversa'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () => loadConversationsExample(),
-              child: const Text('5. Carregar Conversas'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () => adminSendMessageExample(),
-              child: const Text('6. Admin - Enviar Mensagem'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () => adminLoadConversationExample(),
-              child: const Text('7. Admin - Carregar Conversa'),
-            ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () => disconnectExample(),
-              child: const Text('8. Desconectar'),
-            ),
-          ],
+  /// Exemplo 3: Uso com BLoC
+  static Widget exampleWithBloc() {
+    return BlocProvider<ChatBloc>(
+      create: (context) => ChatBloc(),
+      child: BlocListener<ChatBloc, ChatState>(
+        listener: (context, state) {
+          if (state is ChatError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message)),
+            );
+          }
+        },
+        child: BlocBuilder<ChatBloc, ChatState>(
+          builder: (context, state) {
+            if (state is ChatLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            
+            if (state is ChatConnected) {
+              return Column(
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    color: Colors.blue,
+                    child: Row(
+                      children: [
+                        Text(
+                          'Chat ${state.chatId ?? "Novo"}',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${state.messages.length} mensagens',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Lista de mensagens
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: state.messages.length,
+                      itemBuilder: (context, index) {
+                        final message = state.messages[index];
+                        return ListTile(
+                          title: Text(message.content),
+                          subtitle: Text('${message.senderType} - ${message.createdAt}'),
+                        );
+                      },
+                    ),
+                  ),
+                  
+                  // Campo de entrada
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            decoration: const InputDecoration(
+                              hintText: 'Digite sua mensagem...',
+                            ),
+                            onSubmitted: (content) {
+                              context.read<ChatBloc>().add(
+                                MessageSent(
+                                  content: content,
+                                  chatId: state.chatId,
+                                  otherUserId: 2,
+                                  otherUserType: 'user',
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }
+            
+            return const Center(child: Text('Nenhum chat ativo'));
+          },
         ),
       ),
     );
   }
+  
+  /// Exemplo 4: Navegação para chat
+  static void navigateToChatExample(BuildContext context) {
+    // Navegar para chat existente
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChatPage(chatId: 1),
+      ),
+    );
+    
+    // Ou navegar para chat com usuário específico
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChatPage(
+          otherUserId: 2,
+          otherUserType: 'user',
+        ),
+      ),
+    );
+  }
+  
+  /// Exemplo 5: Configurar callbacks do ChatService
+  static void setupCallbacks() {
+    // Callback para mensagens recebidas
+    ChatService.onMessageReceived = (message) {
+      print('🟢 Nova mensagem recebida: ${message.content}');
+      // Aqui você pode atualizar a UI, mostrar notificação, etc.
+    };
+    
+    // Callback para erros
+    ChatService.onError = (error) {
+      print('🔴 Erro no chat: $error');
+      // Aqui você pode mostrar snackbar, dialog de erro, etc.
+    };
+  }
+  
+  /// Exemplo 6: Gerenciar múltiplos chats
+  static Future<void> manageMultipleChats() async {
+    final chatService = ChatService.instance;
+    await chatService.initialize();
+    
+    // Criar múltiplos chats
+    final chat1 = await chatService.createPrivateChat(
+      otherUserId: 2,
+      otherUserType: 'user',
+    );
+    
+    final chat2 = await chatService.createPrivateChat(
+      otherUserId: 3,
+      otherUserType: 'admin',
+    );
+    
+    // Escutar ambos os chats
+    await chatService.listenToChat(chat1.id);
+    await chatService.listenToChat(chat2.id);
+    
+    // Enviar mensagens para diferentes chats
+    await chatService.sendMessageToChat(
+      chatId: chat1.id,
+      content: 'Mensagem para chat 1',
+    );
+    
+    await chatService.sendMessageToChat(
+      chatId: chat2.id,
+      content: 'Mensagem para chat 2',
+    );
+    
+    // Listar todos os chats
+    final allChats = await chatService.getChats();
+    print('🟢 Total de chats: ${allChats.length}');
+    
+    for (final chat in allChats) {
+      print('  - ${chat.name} (ID: ${chat.id}, Tipo: ${chat.type})');
+      if (chat.unreadCount != null && chat.unreadCount! > 0) {
+        print('    Mensagens não lidas: ${chat.unreadCount}');
+      }
+    }
+  }
+  
+  /// Exemplo 7: Paginação de mensagens
+  static Future<void> paginationExample() async {
+    final chatService = ChatService.instance;
+    await chatService.initialize();
+    
+    // Buscar conversa com paginação
+    final conversation = await chatService.getConversation(
+      otherUserId: 2,
+      otherUserType: 'user',
+      page: 1,
+      perPage: 20,
+    );
+    
+    print('🟢 Página ${conversation.pagination.currentPage} de ${conversation.pagination.lastPage}');
+    print('🟢 Total de mensagens: ${conversation.pagination.total}');
+    print('🟢 Mensagens nesta página: ${conversation.messages.length}');
+    
+    // Se houver mais páginas, carregar a próxima
+    if (conversation.pagination.currentPage < conversation.pagination.lastPage) {
+      final nextPage = await chatService.getConversation(
+        otherUserId: 2,
+        otherUserType: 'user',
+        page: conversation.pagination.currentPage + 1,
+        perPage: 20,
+      );
+      
+      print('🟢 Próxima página carregada: ${nextPage.messages.length} mensagens');
+    }
+  }
+  
+  /// Exemplo 8: Limpeza e desconexão
+  static Future<void> cleanupExample() async {
+    final chatService = ChatService.instance;
+    
+    // Limpar mensagens em memória
+    chatService.clearMessages();
+    
+    // Limpar chats em memória
+    chatService.clearChats();
+    
+    // Desconectar do chat
+    await chatService.disconnect();
+    
+    print('🟢 ChatService limpo e desconectado');
+  }
 }
 
-// Exemplo de uso em um widget
+/// Widget de exemplo para testar o chat
 class ChatExampleWidget extends StatefulWidget {
   const ChatExampleWidget({super.key});
 
@@ -236,28 +325,53 @@ class _ChatExampleWidgetState extends State<ChatExampleWidget> {
   @override
   void initState() {
     super.initState();
-    // Inicializar chat quando o widget for criado
-    ChatExampleUsage.initializeChatExample();
+    // Configurar callbacks
+    ChatExampleUsage.setupCallbacks();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ChatExampleUsage.buildExampleWidget();
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Exemplos de Chat'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            ElevatedButton(
+              onPressed: () => ChatExampleUsage.exampleDirectUsage(),
+              child: const Text('Testar ChatService Direto'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ChatExampleUsage.exampleGroupChat(),
+              child: const Text('Testar Chat em Grupo'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ChatExampleUsage.manageMultipleChats(),
+              child: const Text('Gerenciar Múltiplos Chats'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ChatExampleUsage.paginationExample(),
+              child: const Text('Testar Paginação'),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ChatExampleUsage.cleanupExample(),
+              child: const Text('Limpar e Desconectar'),
+            ),
+            const SizedBox(height: 32),
+            const Text('Chat com BLoC:'),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ChatExampleUsage.exampleWithBloc(),
+            ),
+          ],
+        ),
+      ),
+    );
   }
-}
-
-// Para usar esta página, adicione uma rota no AppRouter:
-/*
-static const String chatExample = '/chat-example';
-
-// No generateRoute:
-case chatExample:
-  return MaterialPageRoute(
-    builder: (_) => const ChatExamplePage(),
-  );
-
-// Método de navegação:
-static void navigateToChatExample(BuildContext context) {
-  Navigator.of(context).pushNamed(chatExample);
-}
-*/ 
+} 

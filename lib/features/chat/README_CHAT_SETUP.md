@@ -1,85 +1,114 @@
-# Chat Service - Documentação Completa
+# Chat System - Setup e Uso
 
 ## Visão Geral
 
-O ChatService é um sistema completo de chat em tempo real baseado na documentação da API Laravel fornecida. Ele suporta conversas privadas entre usuários e admins, com funcionalidades de broadcast em tempo real usando Pusher.
+O sistema de chat foi atualizado para usar uma infraestrutura baseada em **chats (chat_id)**, onde cada conversa tem um ID único. Isso permite:
 
-## Funcionalidades
+- **Chats privados** entre dois usuários
+- **Chats em grupo** com múltiplos participantes
+- **Canais WebSocket** por chat (`chat.{chat_id}`)
+- **Persistência** de conversas
 
-- ✅ Chat em tempo real usando WebSockets (Pusher)
-- ✅ Conversas privadas entre usuários e admins
-- ✅ Envio e recebimento de mensagens
-- ✅ Carregamento de conversas com paginação
-- ✅ Listagem de conversas com contadores
-- ✅ Suporte para mensagens de admin
-- ✅ Gerenciamento de estado com BLoC
-- ✅ Interface de usuário moderna e responsiva
+## Nova Arquitetura
 
-## Estrutura do Projeto
+### Estrutura Baseada em Chats
 
 ```
-lib/features/chat/
-├── presentation/
-│   ├── bloc/
-│   │   ├── chat_bloc.dart
-│   │   ├── chat_event.dart
-│   │   └── chat_state.dart
-│   ├── pages/
-│   │   └── chat_page.dart
-│   └── widgets/
-│       └── chat_widget.dart
-├── example_usage.dart
-└── README_CHAT_SETUP.md
+Chat (chat_id) → Mensagens → Participantes
+    ↓
+Canal WebSocket: chat.{chat_id}
 ```
 
-## Configuração
+### Tipos de Chat
 
-### 1. Dependências
+1. **Chat Privado**: Entre dois usuários (user/admin)
+2. **Chat em Grupo**: Múltiplos participantes
 
-Certifique-se de que as seguintes dependências estão no `pubspec.yaml`:
+## API Endpoints
 
-```yaml
-dependencies:
-  flutter_bloc: ^8.1.3
-  equatable: ^2.0.5
-  pusher_channels_flutter: ^2.0.0
-  dio: ^5.3.2
-  shared_preferences: ^2.2.2
-```
-
-### 2. Configuração do Pusher
-
-No arquivo `lib/core/config/pusher_config.dart`:
-
-```dart
-class PusherConfig {
-  static const String clientAppKey = 'YOUR_PUSHER_APP_KEY';
-  static const String clientCluster = 'YOUR_PUSHER_CLUSTER';
-  static const String clientSecret = 'YOUR_PUSHER_SECRET';
-  static const String clientAppId = 'YOUR_PUSHER_APP_ID';
+### 1. Criar Chat Privado
+```http
+POST /api/chat/create-private
+{
+  "other_user_id": 2,
+  "other_user_type": "user"
 }
 ```
 
-### 3. Configuração da API
-
-No arquivo `lib/core/config/api_config.dart`:
-
-```dart
-class ApiConfig {
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
-  // ou para dispositivo físico: 'http://192.168.1.100:8000/api'
+### 2. Criar Chat em Grupo
+```http
+POST /api/chat/create-group
+{
+  "name": "Grupo de Suporte",
+  "description": "Chat para suporte geral",
+  "participants": [
+    {"user_id": 1, "user_type": "admin"},
+    {"user_id": 2, "user_type": "user"}
+  ]
 }
 ```
 
-## Uso Básico
+### 3. Enviar Mensagem para Usuário
+```http
+POST /api/chat/send
+{
+  "content": "Olá! Como posso ajudar?",
+  "other_user_id": 2,
+  "other_user_type": "user"
+}
+```
 
-### 1. Inicializar o Chat
+### 4. Enviar Mensagem para Chat
+```http
+POST /api/chat/{chatId}/send
+{
+  "content": "Mensagem para o grupo!"
+}
+```
+
+### 5. Buscar Conversa
+```http
+GET /api/chat/conversation/{otherUserId}/{otherUserType}?page=1&per_page=50
+```
+
+### 6. Listar Chats
+```http
+GET /api/chat/conversations?page=1&per_page=20
+```
+
+## WebSocket Events
+
+### Canal
+```
+chat.{chat_id}
+```
+
+### Evento
+```
+MessageSent
+```
+
+### Payload
+```json
+{
+  "id": 10,
+  "chat_id": 1,
+  "content": "Olá! Como posso ajudar?",
+  "sender_type": "admin",
+  "sender_id": 1,
+  "is_read": false,
+  "created_at": "2025-06-27 21:30:00"
+}
+```
+
+## Uso no Flutter
+
+### 1. Inicialização
 
 ```dart
-import 'package:your_app/core/services/chat_service.dart';
-
-// Inicializar o ChatService
-await ChatService.instance.initialize();
+// Inicializar ChatService
+final chatService = ChatService.instance;
+await chatService.initialize();
 
 // Configurar callbacks
 ChatService.onMessageReceived = (message) {
@@ -91,209 +120,266 @@ ChatService.onError = (error) {
 };
 ```
 
-### 2. Escutar Conversa
+### 2. Criar Chat Privado
 
 ```dart
-// Escutar conversa entre usuário 5 e admin 1
-await ChatService.instance.listenToConversation(5, 1);
+final chat = await chatService.createPrivateChat(
+  otherUserId: 2,
+  otherUserType: 'user',
+);
+
+// Escutar o chat
+await chatService.listenToChat(chat.id);
 ```
 
-### 3. Enviar Mensagem
+### 3. Criar Chat em Grupo
 
 ```dart
-final message = await ChatService.instance.sendMessage(
-  content: 'Olá! Como posso ajudar?',
-  receiverType: 'admin',
-  receiverId: 1,
+final groupChat = await chatService.createGroupChat(
+  name: 'Grupo de Suporte',
+  description: 'Chat para suporte geral',
+  participants: [
+    ChatParticipant(userId: 1, userType: 'admin'),
+    ChatParticipant(userId: 2, userType: 'user'),
+  ],
+);
+
+await chatService.listenToChat(groupChat.id);
+```
+
+### 4. Enviar Mensagens
+
+```dart
+// Para chat específico
+await chatService.sendMessageToChat(
+  chatId: 1,
+  content: 'Mensagem para o chat',
+);
+
+// Para usuário (cria/usa chat privado)
+await chatService.sendMessageToUser(
+  content: 'Olá!',
+  otherUserId: 2,
+  otherUserType: 'user',
 );
 ```
 
-### 4. Carregar Conversa
+### 5. Buscar Conversas
 
 ```dart
-final messages = await ChatService.instance.getConversation(
-  otherUserType: 'admin',
-  otherUserId: 1,
+// Buscar conversa com usuário
+final conversation = await chatService.getConversation(
+  otherUserId: 2,
+  otherUserType: 'user',
   page: 1,
   perPage: 50,
 );
-```
 
-### 5. Carregar Lista de Conversas
-
-```dart
-final conversations = await ChatService.instance.getConversations();
+// Listar todos os chats
+final chats = await chatService.getChats(
+  page: 1,
+  perPage: 20,
+);
 ```
 
 ## Uso com BLoC
 
-### 1. Inicializar Chat com BLoC
+### 1. Inicializar Chat
 
 ```dart
-BlocProvider<ChatBloc>(
-  create: (context) => ChatBloc(),
-  child: ChatWidget(
-    currentUserId: 5,
-    otherUserId: 1,
-    otherUserType: 'admin',
-  ),
-)
+context.read<ChatBloc>().add(
+  ChatInitialized(chatId: 1),
+);
 ```
 
-### 2. Enviar Mensagem via BLoC
+### 2. Enviar Mensagem
 
 ```dart
 context.read<ChatBloc>().add(
   MessageSent(
     content: 'Olá!',
-    receiverType: 'admin',
-    receiverId: 1,
+    chatId: 1, // Para chat específico
+    // OU
+    otherUserId: 2, // Para criar/usar chat privado
+    otherUserType: 'user',
   ),
 );
 ```
 
-### 3. Carregar Conversa via BLoC
+### 3. Carregar Conversa
 
 ```dart
 context.read<ChatBloc>().add(
   LoadConversation(
-    otherUserType: 'admin',
-    otherUserId: 1,
+    otherUserId: 2,
+    otherUserType: 'user',
+  ),
+);
+```
+
+### 4. Listar Chats
+
+```dart
+context.read<ChatBloc>().add(
+  LoadChats(page: 1, perPage: 20),
+);
+```
+
+### 5. Criar Chats
+
+```dart
+// Chat privado
+context.read<ChatBloc>().add(
+  CreatePrivateChat(
+    otherUserId: 2,
+    otherUserType: 'user',
+  ),
+);
+
+// Chat em grupo
+context.read<ChatBloc>().add(
+  CreateGroupChat(
+    name: 'Grupo',
+    description: 'Descrição',
+    participants: [
+      ChatParticipant(userId: 1, userType: 'admin'),
+      ChatParticipant(userId: 2, userType: 'user'),
+    ],
   ),
 );
 ```
 
 ## Navegação
 
-### Usando AppRouter
+### 1. Para Chat Existente
 
 ```dart
-import 'package:your_app/core/routes/app_router.dart';
-
-// Navegar para chat
 AppRouter.navigateToChat(
   context,
-  currentUserId: 5,
-  otherUserId: 1,
-  otherUserType: 'admin',
+  chatId: 1,
 );
 ```
 
-### Navegação Direta
+### 2. Para Chat com Usuário
 
 ```dart
-Navigator.of(context).push(
-  MaterialPageRoute(
-    builder: (_) => ChatPage(
-      currentUserId: 5,
-      otherUserId: 1,
-      otherUserType: 'admin',
-    ),
-  ),
+AppRouter.navigateToChat(
+  context,
+  otherUserId: 2,
+  otherUserType: 'user',
 );
 ```
 
-## Funcionalidades de Admin
-
-### 1. Admin Enviando Mensagem
+### 3. Widget de Chat
 
 ```dart
-final message = await ChatService.instance.adminSendMessage(
-  content: 'Olá! Sou o administrador.',
-  userId: 5, // ID do usuário que receberá
-);
-```
-
-### 2. Admin Carregando Conversa
-
-```dart
-final messages = await ChatService.instance.adminGetConversation(
-  userId: 5,
-  page: 1,
-  perPage: 50,
-);
-```
-
-### 3. Admin Listando Conversas
-
-```dart
-final conversations = await ChatService.instance.adminGetConversations();
+ChatWidget(
+  chatId: 1, // Para chat existente
+  // OU
+  otherUserId: 2, // Para criar/usar chat privado
+  otherUserType: 'user',
+)
 ```
 
 ## Modelos de Dados
 
 ### ChatMessage
-
 ```dart
 class ChatMessage {
   final int id;
+  final int chatId;
   final String content;
   final String senderType;
   final int senderId;
-  final String senderName;
-  final String receiverType;
-  final int receiverId;
   final bool isRead;
-  final DateTime? readAt;
   final DateTime createdAt;
 }
 ```
 
-### ChatConversation
+### Chat
+```dart
+class Chat {
+  final int id;
+  final String type; // 'private' ou 'group'
+  final String name;
+  final String description;
+  final List<ChatParticipant>? participants;
+  final ChatLastMessage? lastMessage;
+  final int? unreadCount;
+}
+```
 
+### ChatParticipant
+```dart
+class ChatParticipant {
+  final int userId;
+  final String userType;
+}
+```
+
+### ChatConversation
 ```dart
 class ChatConversation {
-  final int otherUserId;
-  final String otherUserType;
-  final DateTime? lastMessageAt;
-  final int messageCount;
-  final int unreadCount;
+  final Chat chat;
+  final List<ChatMessage> messages;
+  final ChatPagination pagination;
 }
 ```
 
 ## Estados do BLoC
 
-- `ChatInitial`: Estado inicial
-- `ChatLoading`: Carregando
-- `ChatConnected`: Conectado com mensagens e conversas
-- `ChatError`: Erro ocorreu
-- `ChatDisconnectedState`: Desconectado
+### ChatInitial
+Estado inicial do chat.
+
+### ChatLoading
+Carregando dados do chat.
+
+### ChatConnected
+```dart
+class ChatConnected extends ChatState {
+  final int? chatId;
+  final List<ChatMessage> messages;
+  final List<Chat> chats;
+}
+```
+
+### ChatError
+```dart
+class ChatError extends ChatState {
+  final String message;
+}
+```
+
+### ChatDisconnectedState
+Chat desconectado.
 
 ## Eventos do BLoC
 
-- `ChatInitialized`: Inicializar chat
-- `MessageSent`: Enviar mensagem
-- `MessageReceived`: Mensagem recebida
-- `LoadConversation`: Carregar conversa
-- `LoadConversations`: Carregar lista de conversas
-- `ChatDisconnected`: Desconectar
+### ChatInitialized
+Inicializa o chat com um chatId opcional.
 
-## Tratamento de Erros
+### MessageSent
+Envia uma mensagem.
 
-O ChatService inclui tratamento robusto de erros:
+### MessageReceived
+Mensagem recebida via WebSocket.
 
-```dart
-ChatService.onError = (error) {
-  // Mostrar snackbar ou dialog de erro
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('Erro no chat: $error'),
-      backgroundColor: Colors.red,
-    ),
-  );
-};
-```
+### LoadConversation
+Carrega conversa com usuário específico.
 
-## Logs e Debug
+### LoadChats
+Lista todos os chats do usuário.
 
-O ChatService inclui logs detalhados para debug:
+### CreatePrivateChat
+Cria chat privado.
 
-- 🟡 Logs informativos
-- 🟢 Logs de sucesso
-- 🔴 Logs de erro
-- 🔵 Logs de HTTP
+### CreateGroupChat
+Cria chat em grupo.
 
-## Configuração do Backend Laravel
+### ChatDisconnected
+Desconecta do chat.
+
+## Configuração do Backend (Laravel)
 
 ### 1. Variáveis de Ambiente
 
@@ -305,16 +391,21 @@ PUSHER_APP_ID=your_pusher_app_id
 PUSHER_APP_CLUSTER=your_pusher_cluster
 ```
 
-### 2. Rotas da API
+### 2. Configuração do Pusher
 
-O backend deve implementar as seguintes rotas:
-
-- `POST /api/chat/send` - Enviar mensagem
-- `GET /api/chat/conversation` - Buscar conversa
-- `GET /api/chat/conversations` - Listar conversas
-- `POST /api/admin/chat/send` - Admin enviar mensagem
-- `GET /api/admin/chat/conversation` - Admin buscar conversa
-- `GET /api/admin/chat/conversations` - Admin listar conversas
+```php
+// config/broadcasting.php
+'pusher' => [
+    'driver' => 'pusher',
+    'key' => env('PUSHER_APP_KEY'),
+    'secret' => env('PUSHER_APP_SECRET'),
+    'app_id' => env('PUSHER_APP_ID'),
+    'options' => [
+        'cluster' => env('PUSHER_APP_CLUSTER'),
+        'encrypted' => true,
+    ],
+],
+```
 
 ### 3. Evento de Broadcast
 
@@ -322,51 +413,125 @@ O backend deve implementar as seguintes rotas:
 // app/Events/MessageSent.php
 class MessageSent implements ShouldBroadcast
 {
+    use InteractsWithSockets, SerializesModels;
+
+    public $message;
+
+    public function __construct($message)
+    {
+        $this->message = $message;
+    }
+
     public function broadcastOn()
     {
-        $channelName = 'chat.' . min($this->message->sender_id, $this->message->receiver_id) . 
-                      '-' . max($this->message->sender_id, $this->message->receiver_id);
-        
-        return new PrivateChannel($channelName);
+        return new PrivateChannel('chat.' . $this->message->chat_id);
+    }
+
+    public function broadcastAs()
+    {
+        return 'MessageSent';
     }
 }
 ```
 
-## Exemplo Completo
+### 4. Controller
 
-Veja o arquivo `example_usage.dart` para exemplos completos de uso do ChatService.
+```php
+// app/Http/Controllers/ChatController.php
+class ChatController extends Controller
+{
+    public function createPrivate(Request $request)
+    {
+        // Lógica para criar chat privado
+        $chat = Chat::createPrivate($request->other_user_id, $request->other_user_type);
+        
+        return response()->json([
+            'success' => true,
+            'data' => ['chat' => $chat]
+        ], 201);
+    }
+
+    public function sendMessage(Request $request, $chatId = null)
+    {
+        if ($chatId) {
+            // Enviar para chat específico
+            $message = Message::create([
+                'chat_id' => $chatId,
+                'content' => $request->content,
+                'sender_type' => auth()->user()->type,
+                'sender_id' => auth()->id(),
+            ]);
+        } else {
+            // Criar/usar chat privado
+            $chat = Chat::createPrivate($request->other_user_id, $request->other_user_type);
+            $message = Message::create([
+                'chat_id' => $chat->id,
+                'content' => $request->content,
+                'sender_type' => auth()->user()->type,
+                'sender_id' => auth()->id(),
+            ]);
+        }
+
+        // Broadcast da mensagem
+        broadcast(new MessageSent($message))->toOthers();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'message' => $message,
+                'chat' => $chat ?? $message->chat
+            ]
+        ], 201);
+    }
+}
+```
+
+## Exemplos de Uso
+
+Veja o arquivo `example_usage.dart` para exemplos completos de:
+
+- Uso direto do ChatService
+- Uso com BLoC
+- Criação de chats privados e em grupo
+- Navegação
+- Gerenciamento de múltiplos chats
+- Paginação
+- Limpeza e desconexão
 
 ## Troubleshooting
 
 ### 1. Erro de Conexão
+- Verifique se o backend está rodando
+- Confirme as configurações do Pusher
+- Teste a conectividade com `curl`
 
-- Verifique se o backend Laravel está rodando
-- Confirme a URL base no `ApiConfig`
-- Teste a conectividade com `curl` ou Postman
+### 2. Mensagens Não Aparecem
+- Verifique se está escutando o canal correto
+- Confirme se o evento está sendo broadcastado
+- Verifique os logs do ChatService
 
-### 2. Erro do Pusher
-
-- Verifique as credenciais do Pusher
-- Confirme se o cluster está correto
-- Teste em dispositivo físico (não web)
-
-### 3. Mensagens Não Aparecem
-
-- Verifique se o canal está correto
-- Confirme se o evento `MessageSent` está sendo disparado
+### 3. Chat Não Cria
+- Verifique se o token está válido
+- Confirme se os parâmetros estão corretos
 - Verifique os logs do backend
 
-### 4. Erro de Autenticação
+### 4. WebSocket Não Conecta
+- Verifique as configurações do Pusher
+- Confirme se o cluster está correto
+- Teste em dispositivo real (não web)
 
-- Verifique se o token está sendo enviado
-- Confirme se o token não expirou
-- Teste o login novamente
+## Logs e Debug
 
-## Próximos Passos
+O ChatService inclui logs detalhados para debug:
 
-1. Implementar notificações push
-2. Adicionar suporte para arquivos/mídia
-3. Implementar indicador de digitação
-4. Adicionar suporte para emojis
-5. Implementar busca de mensagens
-6. Adicionar suporte para grupos 
+```
+🟡 ChatService - Inicializando...
+🟢 ChatService - Inicializado com sucesso
+🟡 ChatService - Escutando canal: chat.1
+🟢 ChatService - Inscrito no canal de chat: chat.1
+🟡 ChatService - Enviando mensagem para chat...
+🟢 ChatService - Mensagem enviada com sucesso
+🟢 ChatService - Mensagem recebida: Olá! no chat 1
+```
+
+Use esses logs para identificar problemas de conectividade e funcionamento. 

@@ -85,7 +85,6 @@ class HomePage extends StatelessWidget {
   void _openChat(BuildContext context) {
     AppRouter.navigateToChat(
       context,
-      currentUserId: 1, // ID do usuário atual (deve vir do login)
       otherUserId: 1, // ID do admin
       otherUserType: 'admin',
     );
@@ -96,7 +95,7 @@ class HomePage extends StatelessWidget {
   }
 
   void _showChannelDialog(BuildContext context) {
-    final userIdController = TextEditingController();
+    final chatIdController = TextEditingController();
     final otherUserIdController = TextEditingController();
     final otherUserTypeController = TextEditingController(text: 'admin');
 
@@ -108,10 +107,10 @@ class HomePage extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-              controller: userIdController,
+              controller: chatIdController,
               decoration: const InputDecoration(
-                labelText: 'Seu User ID',
-                hintText: 'ex: 1, 2, 3...',
+                labelText: 'Chat ID (opcional)',
+                hintText: 'ex: 1, 2, 3... (deixe vazio para criar novo)',
               ),
               keyboardType: TextInputType.number,
             ),
@@ -119,7 +118,7 @@ class HomePage extends StatelessWidget {
             TextField(
               controller: otherUserIdController,
               decoration: const InputDecoration(
-                labelText: 'ID do Outro Usuário',
+                labelText: 'ID do Outro Usuário (se não tiver Chat ID)',
                 hintText: 'ex: 1, 2, 3...',
               ),
               keyboardType: TextInputType.number,
@@ -141,15 +140,15 @@ class HomePage extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              final userId = int.tryParse(userIdController.text.trim());
+              final chatId = int.tryParse(chatIdController.text.trim());
               final otherUserId = int.tryParse(otherUserIdController.text.trim());
               final otherUserType = otherUserTypeController.text.trim();
               
-              if (userId != null && otherUserId != null && otherUserType.isNotEmpty) {
+              if (chatId != null || (otherUserId != null && otherUserType.isNotEmpty)) {
                 Navigator.of(context).pop();
                 AppRouter.navigateToChat(
                   context,
-                  currentUserId: userId,
+                  chatId: chatId,
                   otherUserId: otherUserId,
                   otherUserType: otherUserType,
                 );
