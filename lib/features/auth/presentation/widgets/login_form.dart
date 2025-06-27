@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
 import '../../../../core/routes/app_router.dart';
+import '../../../../core/services/http_service.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
@@ -101,6 +102,62 @@ class _LoginFormState extends State<LoginForm> {
                   Navigator.of(context).pushNamed('/register');
                 },
                 child: const Text('Não tem uma conta? Registre-se'),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton(
+                onPressed: () async {
+                  // Teste de conectividade
+                  try {
+                    final httpService = HttpService(baseUrl: 'http://10.0.2.2:8006/api');
+                    
+                    // Teste simples de GET
+                    final response = await httpService.get('/');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('API OK: $response'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Erro na API: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Testar Conectividade API'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: () async {
+                  // Teste específico do endpoint de login
+                  try {
+                    final httpService = HttpService(baseUrl: 'http://10.0.2.2:8006/api');
+                    
+                    // Teste POST para login com dados inválidos
+                    final response = await httpService.post('/login', {
+                      'email': 'test@test.com',
+                      'password': 'wrongpassword',
+                    });
+                    
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Login endpoint OK: $response'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Erro no login endpoint: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Testar Endpoint Login'),
               ),
             ],
           ),

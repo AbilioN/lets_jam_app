@@ -9,21 +9,58 @@ class AuthApi {
   }
 
   Future<Map<String, dynamic>> login(String email, String password) async {
-    final response = await _httpService.post(
-      '/login',
-      {
-        'email': email,
-        'password': password,
-      },
-    );
+    try {
+      print('🟡 AuthApi - Iniciando login...');
+      print('   Email: $email');
+      print('   Password: $password');
+      print('   Endpoint: /login');
+      
+      final response = await _httpService.post(
+        '/login',
+        {
+          'email': email,
+          'password': password,
+        },
+      );
 
-    if (response['success'] == true) {
-      return {
-        'user': response['user'],
-        'token': response['token'],
-      };
-    } else {
-      throw Exception(response['message'] ?? 'Erro no login');
+      print('🟡 AuthApi - Resposta recebida:');
+      print('   Response: $response');
+      print('   Response type: ${response.runtimeType}');
+      print('   Response keys: ${response is Map ? response.keys.toList() : 'N/A'}');
+
+      // A API Laravel retorna diretamente os dados sem campo 'success'
+      // Verificar se temos user e token na resposta
+      if (response is Map<String, dynamic> && 
+          response.containsKey('user') && 
+          response.containsKey('token')) {
+        print('🟢 AuthApi - Login bem-sucedido');
+        print('   User: ${response['user']}');
+        print('   Token: ${response['token']}');
+        return {
+          'user': response['user'],
+          'token': response['token'],
+        };
+      } else {
+        print('🔴 AuthApi - Login falhou - formato de resposta inválido');
+        String errorMessage = 'Erro no login';
+        
+        if (response is Map<String, dynamic>) {
+          if (response.containsKey('message')) {
+            errorMessage = response['message'] as String;
+          } else if (response.containsKey('error')) {
+            errorMessage = response['error'] as String;
+          }
+        } else if (response is String) {
+          errorMessage = response;
+        }
+        
+        print('   Error message: $errorMessage');
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      print('🔴 AuthApi - Erro no login: $e');
+      print('🔴 AuthApi - Tipo do erro: ${e.runtimeType}');
+      rethrow;
     }
   }
 

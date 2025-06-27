@@ -22,17 +22,35 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<UserModel> login(String email, String password) async {
     try {
+      print('🟡 AuthRemoteDataSource - Iniciando login...');
+      print('   Email: $email');
+      print('   Password: $password');
+      
       final result = await authApi.login(email, password);
       
-      final user = result['user'] as UserModel;
+      print('🟡 AuthRemoteDataSource - Resultado da API:');
+      print('   Result: $result');
+      print('   Keys disponíveis: ${result.keys.toList()}');
+      
+      final user = UserModel.fromApiResponse(result);
       final token = result['token'] as String;
+      
+      print('🟡 AuthRemoteDataSource - Dados extraídos:');
+      print('   User: $user');
+      print('   Token: ${token.substring(0, 20)}...');
       
       // Salvar o token
       await tokenService.saveToken(token);
+      print('🟢 AuthRemoteDataSource - Token salvo com sucesso');
       
       return user;
     } catch (e) {
-      throw Exception('Erro no login: $e');
+      print('🔴 AuthRemoteDataSource - Erro no login: $e');
+      print('🔴 AuthRemoteDataSource - Tipo do erro: ${e.runtimeType}');
+      if (e is DioException) {
+        _handleDioError(e);
+      }
+      rethrow;
     }
   }
 

@@ -60,10 +60,22 @@ class HttpService {
           },
         ),
       );
+      
+      print('🔵 HttpService - Resposta recebida:');
+      print('   Status Code: ${response.statusCode}');
+      print('   Headers: ${response.headers}');
+      print('   Data: ${response.data}');
+      print('   Data type: ${response.data.runtimeType}');
+      
       return response.data;
     } on DioException catch (e) {
+      print('🔴 HttpService - DioException capturada:');
+      print('   Type: ${e.type}');
+      print('   Message: ${e.message}');
+      print('   Error: ${e.error}');
       _handleDioError(e);
     } catch (e) {
+      print('🔴 HttpService - Erro inesperado: $e');
       throw Exception('Erro inesperado: $e');
     }
   }

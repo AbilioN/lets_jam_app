@@ -10,7 +10,7 @@ class PusherConfig {
   // Configuração para o cliente Flutter
   static const String clientAppKey = appKey;
   static const String clientCluster = cluster;
-  static const String clientHost = host.isEmpty ? null : host;
+  static const String? clientHost = null;
   static const int clientPort = port;
   static const String clientScheme = scheme;
 } 

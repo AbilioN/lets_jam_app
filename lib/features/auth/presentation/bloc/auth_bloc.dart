@@ -28,17 +28,40 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     LoginRequested event,
     Emitter<AuthState> emit,
   ) async {
+    print('🟠 AuthBloc - Iniciando login...');
+    print('   Email: ${event.email}');
+    print('   Password: ${event.password}');
+    
     emit(AuthLoading());
     
-    final result = await loginUseCase(LoginParams(
-      email: event.email,
-      password: event.password,
-    ));
+    try {
+      final result = await loginUseCase(LoginParams(
+        email: event.email,
+        password: event.password,
+      ));
 
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (user) => emit(AuthAuthenticated(user)),
-    );
+      print('🟠 AuthBloc - Resultado do UseCase:');
+      print('   Result: $result');
+      print('   É Right? ${result.isRight()}');
+      print('   É Left? ${result.isLeft()}');
+
+      result.fold(
+        (failure) {
+          print('🔴 AuthBloc - Falha no login: ${failure.message}');
+          emit(AuthError(failure.message));
+        },
+        (user) {
+          print('🟢 AuthBloc - Login bem-sucedido:');
+          print('   User ID: ${user.id}');
+          print('   User Name: ${user.name}');
+          print('   User Email: ${user.email}');
+          emit(AuthAuthenticated(user));
+        },
+      );
+    } catch (e) {
+      print('🔴 AuthBloc - Erro inesperado no login: $e');
+      emit(AuthError('Erro inesperado: $e'));
+    }
   }
 
   Future<void> _onRegisterRequested(

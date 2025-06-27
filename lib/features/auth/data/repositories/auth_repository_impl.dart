@@ -19,15 +19,31 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, User>> login(String email, String password) async {
+    print('🟡 AuthRepository - Iniciando login...');
+    print('   Email: $email');
+    print('   Password: $password');
+    
     if (await networkInfo.isConnected) {
+      print('🟢 AuthRepository - Conexão com internet OK');
       try {
+        print('🟡 AuthRepository - Chamando remoteDataSource.login...');
         final user = await remoteDataSource.login(email, password);
+        print('🟢 AuthRepository - Login bem-sucedido no remoteDataSource');
+        print('   User ID: ${user.id}');
+        print('   User Name: ${user.name}');
+        print('   User Email: ${user.email}');
+        
+        print('🟡 AuthRepository - Salvando usuário no cache...');
         await localDataSource.cacheUser(user);
+        print('🟢 AuthRepository - Usuário salvo no cache');
+        
         return Right(user);
       } catch (e) {
+        print('🔴 AuthRepository - Erro no login: $e');
         return Left(ServerFailure(e.toString()));
       }
     } else {
+      print('🔴 AuthRepository - Sem conexão com internet');
       return Left(NetworkFailure('No internet connection'));
     }
   }
