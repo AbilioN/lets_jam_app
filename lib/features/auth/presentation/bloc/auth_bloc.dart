@@ -87,6 +87,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     VerifyEmailRequested event,
     Emitter<AuthState> emit,
   ) async {
+    print('🟠 AuthBloc - Iniciando verificação de email...');
+    print('   Email: ${event.email}');
+    print('   Código: ${event.code}');
+    print('   Código length: ${event.code.length}');
+    
     emit(AuthLoading());
     
     final result = await verifyEmailUseCase(VerifyEmailParams(
@@ -94,12 +99,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       code: event.code,
     ));
 
+    print('🟠 AuthBloc - Resultado do UseCase:');
+    print('   Result: $result');
+    print('   É Right? ${result.isRight()}');
+    print('   É Left? ${result.isLeft()}');
+
     result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (verificationResult) => emit(AuthEmailVerified(
-        message: verificationResult['message']!,
-        email: verificationResult['email']!,
-      )),
+      (failure) {
+        print('🔴 AuthBloc - Falha na verificação: ${failure.message}');
+        emit(AuthError(failure.message));
+      },
+      (verificationResult) {
+        print('🟢 AuthBloc - Verificação bem-sucedida:');
+        print('   Message: ${verificationResult['message']}');
+        print('   Email: ${verificationResult['email']}');
+        emit(AuthEmailVerified(
+          message: verificationResult['message']!,
+          email: verificationResult['email']!,
+        ));
+      },
     );
   }
 

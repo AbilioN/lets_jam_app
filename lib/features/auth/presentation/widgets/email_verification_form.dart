@@ -47,9 +47,17 @@ class _EmailVerificationFormState extends State<EmailVerificationForm> {
     } else if (value.isEmpty && index > 0) {
       _focusNodes[index - 1].requestFocus();
     }
+    
+    // Forçar rebuild para atualizar o botão
+    setState(() {});
   }
 
   void _verifyEmail() {
+    print('🔵 EmailVerificationForm - Verificando email...');
+    print('   Email: ${widget.email}');
+    print('   Código: $_code');
+    print('   Código length: ${_code.length}');
+    
     if (_code.length == 6) {
       context.read<AuthBloc>().add(
             VerifyEmailRequested(
@@ -64,6 +72,8 @@ class _EmailVerificationFormState extends State<EmailVerificationForm> {
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
+        print('🔵 EmailVerificationForm - Estado recebido: ${state.runtimeType}');
+        
         if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -153,13 +163,21 @@ class _EmailVerificationFormState extends State<EmailVerificationForm> {
             const SizedBox(height: 32),
             BlocBuilder<AuthBloc, AuthState>(
               builder: (context, state) {
+                final isCodeComplete = _code.length == 6;
+                final isLoading = state is AuthLoading;
+                final isButtonEnabled = isCodeComplete && !isLoading;
+                
+                print('🔵 EmailVerificationForm - Estado do botão:');
+                print('   Código completo: $isCodeComplete');
+                print('   Loading: $isLoading');
+                print('   Botão habilitado: $isButtonEnabled');
+                print('   Código atual: "$_code" (length: ${_code.length})');
+                
                 return SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: state is AuthLoading || _code.length != 6
-                        ? null
-                        : _verifyEmail,
-                    child: state is AuthLoading
+                    onPressed: isButtonEnabled ? _verifyEmail : null,
+                    child: isLoading
                         ? const CircularProgressIndicator()
                         : const Text('Verificar Email'),
                   ),
