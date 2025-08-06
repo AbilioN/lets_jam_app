@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 class ApiConfig {
   // URLs base para diferentes ambientes
-  static const String _localhost = 'http://localhost:8006/api';
+  static const String _localhost = 'http://10.0.2.2:8006/api';
   static const String _androidEmulator = 'http://10.0.2.2:8006/api';
   static const String _iosSimulator = 'http://localhost:8006/api';
   
