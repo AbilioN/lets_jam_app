@@ -31,17 +31,26 @@ class ChatService {
 
   ChatService._internal();
 
+  // Método para configurar dependências
+  static void configureDependencies(HttpService httpService, TokenService tokenService) {
+    _httpService = httpService;
+    _tokenService = tokenService;
+  }
+
   /// Inicializa o serviço de chat
   Future<void> initialize() async {
     try {
       print('🟡 ChatService - Inicializando...');
       
-      // Inicializar serviços
-      _httpService = HttpService(baseUrl: ApiConfig.baseUrl);
-      
-      // Inicializar TokenService com SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      _tokenService = TokenServiceImpl(prefs);
+      // Inicializar serviços (se não foram configurados via configureDependencies)
+      if (_httpService == null) {
+        final prefs = await SharedPreferences.getInstance();
+        _tokenService = TokenServiceImpl(prefs);
+        _httpService = HttpService(
+          baseUrl: ApiConfig.baseUrl,
+          tokenService: _tokenService!,
+        );
+      }
       
       // Inicializar Pusher
       _pusher = PusherChannelsFlutter.getInstance();

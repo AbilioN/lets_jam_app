@@ -50,9 +50,9 @@ class HomePage extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => _openChat(context),
+                onPressed: () => _openConversations(context),
                 icon: const Icon(Icons.chat_bubble_outline),
-                label: const Text('Abrir Chat'),
+                label: const Text('Abrir Conversas'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -80,6 +80,10 @@ class HomePage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _openConversations(BuildContext context) {
+    AppRouter.navigateToConversations(context);
   }
 
   void _openChat(BuildContext context) {

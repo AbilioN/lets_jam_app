@@ -1,12 +1,9 @@
-import '../../../../core/config/api_config.dart';
 import '../../../../core/services/http_service.dart';
 
 class AuthApi {
-  late final HttpService _httpService;
+  final HttpService _httpService;
 
-  AuthApi() {
-    _httpService = HttpService(baseUrl: ApiConfig.baseUrl);
-  }
+  AuthApi(this._httpService);
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {

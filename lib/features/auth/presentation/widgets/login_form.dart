@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/services/http_service.dart';
+import '../../../../core/di/injection.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
@@ -108,7 +109,7 @@ class _LoginFormState extends State<LoginForm> {
                 onPressed: () async {
                   // Teste de conectividade
                   try {
-                    final httpService = HttpService(baseUrl: 'http://10.0.2.2:8006/api');
+                    final httpService = getIt<HttpService>();
                     
                     // Teste simples de GET
                     final response = await httpService.get('/');
@@ -134,7 +135,7 @@ class _LoginFormState extends State<LoginForm> {
                 onPressed: () async {
                   // Teste específico do endpoint de login
                   try {
-                    final httpService = HttpService(baseUrl: 'http://10.0.2.2:8006/api');
+                    final httpService = getIt<HttpService>();
                     
                     // Teste POST para login com dados inválidos
                     final response = await httpService.post('/login', {

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../network/network_info.dart';
 import '../network/network_info_impl.dart';
 import '../services/token_service.dart';
+import '../services/http_service.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
@@ -14,6 +15,13 @@ import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/domain/usecases/verify_email_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/chat/data/models/conversation_model.dart';
+import '../../features/chat/data/repositories/conversations_repository_impl.dart';
+import '../../features/chat/data/services/conversations_api.dart';
+import '../../features/chat/domain/repositories/conversations_repository.dart';
+import '../../features/chat/domain/usecases/get_conversations_usecase.dart';
+import '../../features/chat/presentation/bloc/conversations_bloc.dart';
+import '../services/chat_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -33,10 +41,19 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<TokenService>(
     () => TokenServiceImpl(getIt<SharedPreferences>()),
   );
+  getIt.registerLazySingleton<HttpService>(
+    () => HttpService(
+      baseUrl: 'http://10.0.2.2:8006/api',
+      tokenService: getIt<TokenService>(),
+    ),
+  );
 
   // Data sources
   getIt.registerLazySingleton<AuthRemoteDataSource>(
-    () => AuthRemoteDataSourceImpl(getIt<TokenService>()),
+    () => AuthRemoteDataSourceImpl(
+      getIt<TokenService>(),
+      getIt<AuthApi>(),
+    ),
   );
   getIt.registerLazySingleton<AuthLocalDataSource>(
     () => AuthLocalDataSourceImpl(getIt<SharedPreferences>()),
@@ -72,5 +89,33 @@ Future<void> configureDependencies() async {
   );
 
   // Additional services
-  getIt.registerLazySingleton(() => AuthApi());
+  getIt.registerLazySingleton<AuthApi>(
+    () => AuthApi(getIt<HttpService>()),
+  );
+  
+  // Chat services
+  getIt.registerLazySingleton<ConversationsApi>(
+    () => ConversationsApi(getIt<HttpService>()),
+  );
+  
+  // Chat repositories
+  getIt.registerLazySingleton<ConversationsRepository>(
+    () => ConversationsRepositoryImpl(getIt<ConversationsApi>()),
+  );
+  
+  // Chat use cases
+  getIt.registerLazySingleton<GetConversationsUseCase>(
+    () => GetConversationsUseCase(getIt<ConversationsRepository>()),
+  );
+  
+  // Chat blocs
+  getIt.registerFactory<ConversationsBloc>(
+    () => ConversationsBloc(getIt<GetConversationsUseCase>()),
+  );
+  
+  // Configurar dependências do ChatService
+  ChatService.configureDependencies(
+    getIt<HttpService>(),
+    getIt<TokenService>(),
+  );
 } 

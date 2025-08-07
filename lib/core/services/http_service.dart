@@ -1,14 +1,18 @@
 import 'package:dio/dio.dart';
 import 'dart:convert';
+import 'token_service.dart';
 
 class HttpService {
   final Dio _dio;
   final String baseUrl;
+  final TokenService _tokenService;
 
   HttpService({
     required this.baseUrl,
+    required TokenService tokenService,
     Map<String, String>? headers,
-  }) : _dio = Dio() {
+  }) : _tokenService = tokenService,
+       _dio = Dio() {
     _dio.options.baseUrl = baseUrl;
     _dio.options.headers = {
       'Content-Type': 'application/json',
@@ -21,13 +25,21 @@ class HttpService {
     _dio.options.receiveTimeout = const Duration(seconds: 10);
     _dio.options.sendTimeout = const Duration(seconds: 10);
     
-    // Adicionar interceptor para garantir headers
+    // Adicionar interceptor para incluir token de autorização
     _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) {
+      onRequest: (options, handler) async {
         print('🔵 Interceptor - Headers sendo enviados: ${options.headers}');
         // Garantir que os headers estejam presentes
         options.headers['Content-Type'] = 'application/json';
         options.headers['Accept'] = 'application/json';
+        
+        // Adicionar token de autorização se disponível
+        final token = await _tokenService.getToken();
+        if (token != null && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+          print('🔵 Interceptor - Token adicionado: Bearer $token');
+        }
+        
         handler.next(options);
       },
     ));
@@ -195,13 +207,5 @@ class HttpService {
     }
   }
 
-  // Método para adicionar token de autorização
-  void setAuthToken(String token) {
-    _dio.options.headers['Authorization'] = 'Bearer $token';
-  }
 
-  // Método para remover token de autorização
-  void removeAuthToken() {
-    _dio.options.headers.remove('Authorization');
-  }
 } 

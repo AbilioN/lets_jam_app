@@ -3,6 +3,8 @@ import 'package:pusher_channels_flutter/pusher_channels_flutter.dart';
 import '../config/pusher_config.dart';
 import '../config/api_config.dart';
 import 'http_service.dart';
+import '../di/injection.dart';
+import 'token_service.dart';
 
 class PusherService {
   static PusherChannelsFlutter? _pusher;
@@ -19,10 +21,13 @@ class PusherService {
   
   static List<ChatMessage> get messages => List.unmodifiable(_messages);
 
-  static Future<void> initialize() async {
+  static Future<void> initialize({HttpService? httpService}) async {
     try {
       _pusher = PusherChannelsFlutter.getInstance();
-      _httpService = HttpService(baseUrl: ApiConfig.baseUrl);
+      _httpService = httpService ?? HttpService(
+        baseUrl: ApiConfig.baseUrl,
+        tokenService: getIt<TokenService>(),
+      );
       
       await _pusher!.init(
         apiKey: PusherConfig.clientAppKey,

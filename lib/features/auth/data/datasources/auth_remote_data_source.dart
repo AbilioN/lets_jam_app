@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../../../core/services/token_service.dart';
+import '../../../../core/services/http_service.dart';
 import '../models/user_model.dart';
 import '../services/auth_api.dart';
 import 'dart:convert';
@@ -16,8 +17,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final AuthApi authApi;
   final TokenService tokenService;
 
-  AuthRemoteDataSourceImpl(this.tokenService)
-      : authApi = AuthApi();
+  AuthRemoteDataSourceImpl(this.tokenService, this.authApi);
 
   @override
   Future<UserModel> login(String email, String password) async {
