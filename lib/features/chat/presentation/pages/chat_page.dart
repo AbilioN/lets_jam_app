@@ -7,12 +7,14 @@ class ChatPage extends StatelessWidget {
   final int? chatId;
   final int? otherUserId;
   final String? otherUserType;
+  final String? chatName;
 
   const ChatPage({
     super.key,
     this.chatId,
     this.otherUserId,
     this.otherUserType,
+    this.chatName,
   });
 
   @override
@@ -24,6 +26,7 @@ class ChatPage extends StatelessWidget {
           chatId: chatId,
           otherUserId: otherUserId,
           otherUserType: otherUserType,
+          chatName: chatName,
         ),
       ),
     );

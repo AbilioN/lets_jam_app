@@ -173,6 +173,7 @@ class _ConversationTile extends StatelessWidget {
     AppRouter.navigateToChat(
       context,
       chatId: conversation.id,
+      chatName: conversation.name,
     );
   }
 

@@ -37,11 +37,13 @@ class AppRouter {
         final chatId = args?['chatId'] as int?;
         final otherUserId = args?['otherUserId'] as int?;
         final otherUserType = args?['otherUserType'] as String?;
+        final chatName = args?['chatName'] as String?;
         return MaterialPageRoute(
           builder: (_) => ChatPage(
             chatId: chatId,
             otherUserId: otherUserId,
             otherUserType: otherUserType,
+            chatName: chatName,
           ),
         );
       case conversations:
@@ -79,6 +81,7 @@ class AppRouter {
     int? chatId,
     int? otherUserId,
     String? otherUserType,
+    String? chatName,
   }) {
     Navigator.of(context).pushNamed(
       chat,
@@ -86,6 +89,7 @@ class AppRouter {
         'chatId': chatId,
         'otherUserId': otherUserId,
         'otherUserType': otherUserType,
+        'chatName': chatName,
       },
     );
   }

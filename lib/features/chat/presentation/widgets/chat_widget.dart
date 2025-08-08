@@ -7,12 +7,14 @@ class ChatWidget extends StatefulWidget {
   final int? chatId;
   final int? otherUserId;
   final String? otherUserType;
+  final String? chatName;
 
   const ChatWidget({
     super.key,
     this.chatId,
     this.otherUserId,
     this.otherUserType,
+    this.chatName,
   });
 
   @override
@@ -165,11 +167,12 @@ class _ChatWidgetState extends State<ChatWidget> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.chatId != null 
+                              widget.chatName ?? 
+                              (widget.chatId != null 
                                   ? 'Chat #${widget.chatId}'
                                   : widget.otherUserId != null
                                       ? 'Chat com ${widget.otherUserType ?? 'Usuário'}'
-                                      : 'Chat',
+                                      : 'Chat'),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
