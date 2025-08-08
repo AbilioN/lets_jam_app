@@ -15,12 +15,12 @@ import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/domain/usecases/verify_email_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
-import '../../features/chat/data/models/conversation_model.dart';
-import '../../features/chat/data/repositories/conversations_repository_impl.dart';
-import '../../features/chat/data/services/conversations_api.dart';
-import '../../features/chat/domain/repositories/conversations_repository.dart';
-import '../../features/chat/domain/usecases/get_conversations_usecase.dart';
-import '../../features/chat/presentation/bloc/conversations_bloc.dart';
+
+import '../../features/chat/data/repositories/chats_repository_impl.dart';
+import '../../features/chat/data/services/chats_api.dart';
+import '../../features/chat/domain/repositories/chats_repository.dart';
+import '../../features/chat/domain/usecases/get_chats_usecase.dart';
+import '../../features/chat/presentation/bloc/chats_bloc.dart';
 import '../services/chat_service.dart';
 
 final getIt = GetIt.instance;
@@ -94,23 +94,23 @@ Future<void> configureDependencies() async {
   );
   
   // Chat services
-  getIt.registerLazySingleton<ConversationsApi>(
-    () => ConversationsApi(getIt<HttpService>()),
+  getIt.registerLazySingleton<ChatsApi>(
+    () => ChatsApi(getIt<HttpService>()),
   );
   
   // Chat repositories
-  getIt.registerLazySingleton<ConversationsRepository>(
-    () => ConversationsRepositoryImpl(getIt<ConversationsApi>()),
+  getIt.registerLazySingleton<ChatsRepository>(
+    () => ChatsRepositoryImpl(getIt<ChatsApi>()),
   );
   
   // Chat use cases
-  getIt.registerLazySingleton<GetConversationsUseCase>(
-    () => GetConversationsUseCase(getIt<ConversationsRepository>()),
+  getIt.registerLazySingleton<GetChatsUseCase>(
+    () => GetChatsUseCase(getIt<ChatsRepository>()),
   );
   
   // Chat blocs
-  getIt.registerFactory<ConversationsBloc>(
-    () => ConversationsBloc(getIt<GetConversationsUseCase>()),
+  getIt.registerFactory<ChatsBloc>(
+    () => ChatsBloc(getIt<GetChatsUseCase>()),
   );
   
   // Configurar dependências do ChatService

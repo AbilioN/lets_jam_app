@@ -1,4 +1,4 @@
-class ConversationModel {
+class ChatModel {
   final int id;
   final String name;
   final String type;
@@ -9,7 +9,7 @@ class ConversationModel {
   final String createdAt;
   final String updatedAt;
 
-  ConversationModel({
+  ChatModel({
     required this.id,
     required this.name,
     required this.type,
@@ -21,8 +21,8 @@ class ConversationModel {
     required this.updatedAt,
   });
 
-  factory ConversationModel.fromJson(Map<String, dynamic> json) {
-    return ConversationModel(
+  factory ChatModel.fromJson(Map<String, dynamic> json) {
+    return ChatModel(
       id: json['id'] as int,
       name: json['name'] as String,
       type: json['type'] as String,
@@ -48,23 +48,35 @@ class ConversationModel {
       'updated_at': updatedAt,
     };
   }
+
+  @override
+  String toString() {
+    return 'ChatModel(id: $id, name: $name, type: $type, description: $description, lastMessage: $lastMessage, unreadCount: $unreadCount, participantsCount: $participantsCount, createdAt: $createdAt, updatedAt: $updatedAt)';
+  }
 }
 
-class ConversationsResponse {
-  final List<ConversationModel> chats;
+class ChatsResponse {
+  final List<ChatModel> chats;
   final Map<String, dynamic> pagination;
 
-  ConversationsResponse({
+  ChatsResponse({
     required this.chats,
     required this.pagination,
   });
 
-  factory ConversationsResponse.fromJson(Map<String, dynamic> json) {
-    return ConversationsResponse(
+  factory ChatsResponse.fromJson(Map<String, dynamic> json) {
+    return ChatsResponse(
       chats: (json['chats'] as List<dynamic>)
-          .map((chat) => ConversationModel.fromJson(chat as Map<String, dynamic>))
+          .map((chat) => ChatModel.fromJson(chat as Map<String, dynamic>))
           .toList(),
       pagination: json['pagination'] as Map<String, dynamic>,
     );
   }
-} 
+
+  Map<String, dynamic> toJson() {
+    return {
+      'chats': chats.map((chat) => chat.toJson()).toList(),
+      'pagination': pagination,
+    };
+  }
+}

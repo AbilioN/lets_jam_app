@@ -2,31 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/routes/app_router.dart';
 import '../../../../core/di/injection.dart';
-import '../../data/models/conversation_model.dart';
-import '../bloc/conversations_bloc.dart';
-import '../bloc/conversations_event.dart';
-import '../bloc/conversations_state.dart';
+import '../../data/models/chat_model.dart';
+import '../bloc/chats_bloc.dart';
+import '../bloc/chats_event.dart';
+import '../bloc/chats_state.dart';
 
-class ConversationsPage extends StatelessWidget {
-  const ConversationsPage({super.key});
+class ChatsPage extends StatelessWidget {
+  const ChatsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Conversas'),
+        title: const Text('Chats'),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
       ),
       body: BlocProvider(
-        create: (context) => getIt<ConversationsBloc>()..add(const LoadConversations()),
-        child: BlocBuilder<ConversationsBloc, ConversationsState>(
+        create: (context) => getIt<ChatsBloc>()..add(const LoadChats()),
+        child: BlocBuilder<ChatsBloc, ChatsState>(
           builder: (context, state) {
-            if (state is ConversationsLoading) {
+            if (state is ChatsLoading) {
               return const Center(
                 child: CircularProgressIndicator(),
               );
-            } else if (state is ConversationsError) {
+            } else if (state is ChatsError) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -45,15 +45,15 @@ class ConversationsPage extends StatelessWidget {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
-                        context.read<ConversationsBloc>().add(const LoadConversations());
+                        context.read<ChatsBloc>().add(const LoadChats());
                       },
                       child: const Text('Tentar Novamente'),
                     ),
                   ],
                 ),
               );
-            } else if (state is ConversationsLoaded) {
-              if (state.conversations.isEmpty) {
+            } else if (state is ChatsLoaded) {
+              if (state.chats.isEmpty) {
                 return const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -65,7 +65,7 @@ class ConversationsPage extends StatelessWidget {
                       ),
                       SizedBox(height: 16),
                       Text(
-                        'Nenhuma conversa encontrada',
+                        'Nenhum chat encontrado',
                         style: TextStyle(fontSize: 16, color: Colors.grey),
                       ),
                     ],
@@ -74,16 +74,16 @@ class ConversationsPage extends StatelessWidget {
               }
               
               return ListView.builder(
-                itemCount: state.conversations.length,
+                itemCount: state.chats.length,
                 itemBuilder: (context, index) {
-                  final conversation = state.conversations[index];
-                  return _ConversationTile(conversation: conversation);
+                  final chat = state.chats[index];
+                  return _ChatTile(chat: chat);
                 },
               );
             }
             
             return const Center(
-              child: Text('Carregando conversas...'),
+              child: Text('Carregando chats...'),
             );
           },
         ),
@@ -92,10 +92,10 @@ class ConversationsPage extends StatelessWidget {
   }
 }
 
-class _ConversationTile extends StatelessWidget {
-  final ConversationModel conversation;
+class _ChatTile extends StatelessWidget {
+  final ChatModel chat;
 
-  const _ConversationTile({required this.conversation});
+  const _ChatTile({required this.chat});
 
   @override
   Widget build(BuildContext context) {
@@ -103,15 +103,15 @@ class _ConversationTile extends StatelessWidget {
       leading: CircleAvatar(
         radius: 25,
         backgroundImage: NetworkImage(
-          'https://picsum.photos/100/100?random=${conversation.id}',
+          'https://picsum.photos/100/100?random=${chat.id}',
         ),
         onBackgroundImageError: (exception, stackTrace) {
           // Fallback para ícone se a imagem falhar
         },
-        child: conversation.unreadCount > 0
+        child: chat.unreadCount > 0
             ? Badge(
                 label: Text(
-                  conversation.unreadCount.toString(),
+                  chat.unreadCount.toString(),
                   style: const TextStyle(fontSize: 12),
                 ),
                 child: null,
@@ -119,17 +119,17 @@ class _ConversationTile extends StatelessWidget {
             : null,
       ),
       title: Text(
-        conversation.name,
+        chat.name,
         style: const TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 16,
         ),
       ),
       subtitle: Text(
-        conversation.lastMessage ?? 'Nenhuma mensagem ainda',
+        chat.lastMessage ?? 'Nenhuma mensagem ainda',
         style: TextStyle(
-          color: conversation.unreadCount > 0 ? Colors.black87 : Colors.grey[600],
-          fontWeight: conversation.unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
+          color: chat.unreadCount > 0 ? Colors.black87 : Colors.grey[600],
+          fontWeight: chat.unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
         ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -139,13 +139,13 @@ class _ConversationTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            _formatDate(conversation.updatedAt),
+            _formatDate(chat.updatedAt),
             style: TextStyle(
               fontSize: 12,
               color: Colors.grey[600],
             ),
           ),
-          if (conversation.unreadCount > 0) ...[
+          if (chat.unreadCount > 0) ...[
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -154,7 +154,7 @@ class _ConversationTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
-                conversation.unreadCount.toString(),
+                chat.unreadCount.toString(),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -172,8 +172,8 @@ class _ConversationTile extends StatelessWidget {
   void _openChat(BuildContext context) {
     AppRouter.navigateToChat(
       context,
-      chatId: conversation.id,
-      chatName: conversation.name,
+      chatId: chat.id,
+      chatName: chat.name,
     );
   }
 
@@ -217,4 +217,4 @@ class _ConversationTile extends StatelessWidget {
         return '';
     }
   }
-} 
+}

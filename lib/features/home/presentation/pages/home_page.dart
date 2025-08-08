@@ -50,9 +50,9 @@ class HomePage extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => _openConversations(context),
+                onPressed: () => _openChats(context),
                 icon: const Icon(Icons.chat_bubble_outline),
-                label: const Text('Abrir Conversas'),
+                label: const Text('Abrir Chats'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -82,17 +82,11 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  void _openConversations(BuildContext context) {
-    AppRouter.navigateToConversations(context);
+  void _openChats(BuildContext context) {
+    AppRouter.navigateToChats(context);
   }
 
-  void _openChat(BuildContext context) {
-    AppRouter.navigateToChat(
-      context,
-      otherUserId: 1, // ID do admin
-      otherUserType: 'admin',
-    );
-  }
+
 
   void _openChatWithCustomChannel(BuildContext context) {
     _showChannelDialog(context);

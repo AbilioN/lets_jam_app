@@ -4,7 +4,7 @@ import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/chat/presentation/pages/chat_page.dart';
-import '../../features/chat/presentation/pages/conversations_page.dart';
+import '../../features/chat/presentation/pages/chats_page.dart';
 
 class AppRouter {
   static const String splash = '/';
@@ -12,7 +12,7 @@ class AppRouter {
   static const String register = '/register';
   static const String home = '/home';
   static const String chat = '/chat';
-  static const String conversations = '/conversations';
+  static const String chats = '/chats';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -46,9 +46,9 @@ class AppRouter {
             chatName: chatName,
           ),
         );
-      case conversations:
+      case chats:
         return MaterialPageRoute(
-          builder: (_) => const ConversationsPage(),
+          builder: (_) => const ChatsPage(),
         );
       default:
         return MaterialPageRoute(
@@ -94,7 +94,7 @@ class AppRouter {
     );
   }
 
-  static void navigateToConversations(BuildContext context) {
-    Navigator.of(context).pushNamed(conversations);
+  static void navigateToChats(BuildContext context) {
+    Navigator.of(context).pushNamed(chats);
   }
 } 
