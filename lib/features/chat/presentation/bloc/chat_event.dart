@@ -36,7 +36,7 @@ class MessageSent extends ChatEvent {
 }
 
 class MessageReceived extends ChatEvent {
-  final ChatMessage message;
+  final chat_service.ChatMessage message;
 
   const MessageReceived({
     required this.message,
@@ -107,7 +107,7 @@ class CreatePrivateChat extends ChatEvent {
 class CreateGroupChat extends ChatEvent {
   final String name;
   final String description;
-  final List<ChatParticipant> participants;
+  final List<chat_service.ChatParticipant> participants;
 
   const CreateGroupChat({
     required this.name,

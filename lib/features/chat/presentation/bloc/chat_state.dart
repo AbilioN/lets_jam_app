@@ -13,8 +13,8 @@ class ChatLoading extends ChatState {}
 
 class ChatConnected extends ChatState {
   final int? chatId;
-  final List<ChatMessage> messages;
-  final List<Chat> chats;
+  final List<chat_service.ChatMessage> messages;
+  final List<chat_service.Chat> chats;
 
   const ChatConnected({
     this.chatId,

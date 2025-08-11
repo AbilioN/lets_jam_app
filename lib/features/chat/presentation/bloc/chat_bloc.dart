@@ -32,8 +32,18 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     
     try {
       // Configurar callbacks do PusherService para chat
-      pusher_service.PusherService.onChatMessageReceived = (message) {
-        add(MessageReceived(message: message));
+      pusher_service.PusherService.onChatMessageReceived = (pusherMessage) {
+        // Converter PusherMessage para ChatMessage do chat_service
+        final chatMessage = chat_service.ChatMessage(
+          id: DateTime.now().millisecondsSinceEpoch, // ID temporário
+          chatId: event.chatId ?? 0,
+          content: pusherMessage.message,
+          senderId: 0, // TODO: Extrair do pusherMessage
+          senderType: 'user', // TODO: Extrair do pusherMessage
+          isRead: false,
+          createdAt: DateTime.now(),
+        );
+        add(MessageReceived(message: chatMessage));
       };
       
       pusher_service.PusherService.onChatEvent = (chatId, eventType, data) {
