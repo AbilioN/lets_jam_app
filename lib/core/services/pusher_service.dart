@@ -59,8 +59,8 @@ class PusherService {
           print('🟢 Pusher - Verificando se é um canal de chat...');
           
           // Verificar se é um canal de chat
-          if (channelName.startsWith('private-chat.')) {
-            final chatId = channelName.replaceFirst('private-chat.', '');
+          if (channelName.startsWith('chat.')) {
+            final chatId = channelName.replaceFirst('chat.', '');
             print('🟢 Pusher - Canal de chat detectado: $channelName (ID: $chatId)');
             
             // Verificar se já está na lista de canais
@@ -81,8 +81,6 @@ class PusherService {
           print('🟡 Pusher - Dados do evento: ${event.data}');
           _handleEvent(event);
         },
-        // Configurar autenticação para canais privados
-        authEndpoint: '${ApiConfig.baseUrl}/broadcasting/auth',
       );
 
       print('🟡 Pusher - Tentando conectar...');
@@ -119,7 +117,7 @@ class PusherService {
     }
   }
 
-  /// Inscreve em um canal de chat específico usando o formato private-chat.{chatId}
+  /// Inscreve em um canal de chat específico usando o formato chat.{chatId}
   static Future<void> subscribeToChat(int chatId) async {
     try {
       print('🟡 Pusher - Tentando inscrever no chat $chatId...');
@@ -132,9 +130,9 @@ class PusherService {
         await initialize();
       }
       
-      final channelName = 'private-chat.$chatId';
+      final channelName = 'chat.$chatId';
       print('🟡 Pusher - Nome do canal: $channelName');
-      print('🟡 Pusher - Formato esperado: private-chat.{chatId}');
+      print('🟡 Pusher - Formato esperado: chat.{chatId}');
       print('🟡 Pusher - Chat ID fornecido: $chatId (tipo: ${chatId.runtimeType})');
       
       // Verificar se já está inscrito neste canal
@@ -160,10 +158,10 @@ class PusherService {
       _chatChannels[channelName] = channel;
       print('🟢 Pusher - Inscrito com sucesso no canal: $channelName');
       print('🟢 Pusher - Total de canais ativos: ${_chatChannels.length}');
-      print('�� Pusher - Canais ativos depois: ${_chatChannels.keys.toList()}');
+      print('🟢 Pusher - Canais ativos depois: ${_chatChannels.keys.toList()}');
       
     } catch (e) {
-      print('🔴 Pusher - Erro ao se inscrever no canal private-chat.$chatId: $e');
+      print('🔴 Pusher - Erro ao se inscrever no canal chat.$chatId: $e');
       print('🔴 Pusher - Stack trace: ${StackTrace.current}');
       rethrow;
     }
@@ -172,7 +170,7 @@ class PusherService {
   /// Remove inscrição de um canal de chat específico
   static Future<void> unsubscribeFromChat(int chatId) async {
     try {
-      final channelName = 'private-chat.$chatId';
+      final channelName = 'chat.$chatId';
       
       if (_chatChannels.containsKey(channelName)) {
         final channel = _chatChannels[channelName]!;
@@ -181,7 +179,7 @@ class PusherService {
         print('🟢 Pusher - Removida inscrição do canal: $channelName');
       }
     } catch (e) {
-      print('🔴 Pusher - Erro ao remover inscrição do canal private-chat.$chatId: $e');
+      print('🔴 Pusher - Erro ao remover inscrição do canal chat.$chatId: $e');
     }
   }
 
@@ -407,7 +405,8 @@ class PusherService {
       
       // Notificar listeners específicos de chat
       if (chatId != null) {
-        onChatEvent?.call(chatId.toString(), 'message-sent', data);
+        // Passar os dados brutos (String JSON) para o callback
+        onChatEvent?.call(chatId.toString(), 'message-sent', event.data);
       }
       
     } catch (e) {
@@ -426,7 +425,8 @@ class PusherService {
       
       // Notificar listeners específicos de chat
       if (chatId != null) {
-        onChatEvent?.call(chatId.toString(), 'message-read', data);
+        // Passar os dados brutos (String JSON) para o callback
+        onChatEvent?.call(chatId.toString(), 'message-read', event.data);
       }
       
     } catch (e) {

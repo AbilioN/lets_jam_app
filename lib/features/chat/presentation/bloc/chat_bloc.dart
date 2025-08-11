@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'dart:convert'; // Added for json.decode
 import '../../../../core/di/injection.dart';
 import '../../../../core/services/chat_service.dart' as chat_service;
 import '../../../../core/services/pusher_service.dart' as pusher_service;
@@ -37,7 +38,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       // Se já estamos inscritos em outro chat, desinscrever primeiro
       if (_currentChatId != null && _currentChatId != event.chatId) {
         print('🟡 ChatBloc - Mudando de chat: $_currentChatId -> ${event.chatId}');
-        print('🟡 ChatBloc - Desinscrevendo do canal anterior: private-chat.$_currentChatId');
+        print('🟡 ChatBloc - Desinscrevendo do canal anterior: chat.$_currentChatId');
         await pusher_service.PusherService.unsubscribeFromChat(_currentChatId!);
       }
       
@@ -55,7 +56,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           
           // Processar diferentes tipos de eventos
           switch (eventType) {
-            case 'message-sent':
+            case 'MessageSent':
               _processPusherMessage(chatId, data);
               break;
             case 'chat-message':
@@ -77,7 +78,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       
       // Inicializar PusherService se necessário
       if (event.chatId != null) {
-        print('🟡 ChatBloc - Inscrevendo no canal: private-chat.${event.chatId}');
+        print('🟡 ChatBloc - Inscrevendo no canal: chat.${event.chatId}');
         
         // Inscrever no canal de chat específico
         await pusher_service.PusherService.subscribeToChat(event.chatId!);
@@ -415,7 +416,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       // Desinscrever do chat ativo se houver
       if (_currentChatId != null) {
         print('🟡 ChatBloc - Desconectando do chat: $_currentChatId');
-        print('🟡 ChatBloc - Desinscrevendo do canal: private-chat.$_currentChatId');
+        print('🟡 ChatBloc - Desinscrevendo do canal: chat.$_currentChatId');
         await pusher_service.PusherService.unsubscribeFromChat(_currentChatId!);
         _currentChatId = null;
       }
@@ -430,37 +431,56 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     }
   }
 
-  void _processPusherMessage(String chatId, Map<String, dynamic> data) {
+  void _processPusherMessage(String chatId, dynamic data) {
     print('🔵 ChatBloc - Processando mensagem do Pusher para chat: $chatId');
     print('🔵 ChatBloc - Dados brutos: $data');
     print('🔵 ChatBloc - Tipo dos dados: ${data.runtimeType}');
     
-    final messageContent = data['message'] as String?;
-    final senderId = data['sender_id'] as int?;
-    final senderType = data['sender_type'] as String?;
-    final createdAt = data['created_at'] as String?;
+    Map<String, dynamic> messageData;
+    
+    // Verificar se os dados são uma String JSON e fazer parse
+    if (data is String) {
+      try {
+        messageData = Map<String, dynamic>.from(json.decode(data));
+        print('🟢 ChatBloc - JSON parseado com sucesso: $messageData');
+      } catch (e) {
+        print('🔴 ChatBloc - Erro ao fazer parse do JSON: $e');
+        return;
+      }
+    } else if (data is Map<String, dynamic>) {
+      messageData = data;
+      print('🟢 ChatBloc - Dados já são Map: $messageData');
+    } else {
+      print('🔴 ChatBloc - Tipo de dados não suportado: ${data.runtimeType}');
+      return;
+    }
+    
+    final messageContent = messageData['content'] as String?;
+    final senderId = messageData['sender_id'] as int?;
+    final senderType = messageData['sender_type'] as String?;
+    final createdAt = messageData['created_at'] as String?;
 
-    print('🔵 ChatBloc - message: $messageContent');
+    print('🔵 ChatBloc - content: $messageContent');
     print('🔵 ChatBloc - sender_id: $senderId (tipo: ${senderId.runtimeType})');
     print('🔵 ChatBloc - sender_type: $senderType');
     print('🔵 ChatBloc - created_at: $createdAt');
 
     if (messageContent != null && senderId != null && senderType != null && createdAt != null) {
       final message = chat_service.ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch, // ID temporário
+        id: messageData['id'] as int? ?? DateTime.now().millisecondsSinceEpoch, // Usar ID do servidor se disponível
         chatId: int.parse(chatId), // Converter String para int
         content: messageContent,
         senderId: senderId,
         senderType: senderType,
-        isRead: false,
+        isRead: messageData['is_read'] as bool? ?? false,
         createdAt: DateTime.parse(createdAt),
       );
       
       print('🟢 ChatBloc - Mensagem criada com sucesso: ${message.content}');
       add(MessageReceived(message: message));
     } else {
-      print('🔴 ChatBloc - Dados de mensagem incompletos do Pusher: $data');
-      print('🔴 ChatBloc - message: $messageContent, sender_id: $senderId, sender_type: $senderType, created_at: $createdAt');
+      print('🔴 ChatBloc - Dados de mensagem incompletos do Pusher: $messageData');
+      print('🔴 ChatBloc - content: $messageContent, sender_id: $senderId, sender_type: $senderType, created_at: $createdAt');
     }
   }
 

@@ -16,7 +16,7 @@ void main() async {
     // await PusherService.testConnection();
     
     // Testar inscrição em canal de chat específico
-    print('🧪 Main - Testando inscrição em canal private-chat.12');
+    print('🧪 Main - Testando inscrição em canal chat.12');
     await PusherService.testChatChannelSubscription(12);
     
   } catch (e) {
