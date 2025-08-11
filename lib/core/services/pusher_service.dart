@@ -16,10 +16,17 @@ class PusherService {
   static Function(String user, String action)? onUserJoined;
   static Function(String user, String action)? onUserLeft;
   
+  // Callbacks específicos para chat
+  static Function(ChatMessage message)? onChatMessageReceived;
+  static Function(String chatId, String eventType, dynamic data)? onChatEvent;
+  
   // Lista de mensagens em memória
   static final List<ChatMessage> _messages = [];
   
   static List<ChatMessage> get messages => List.unmodifiable(_messages);
+  
+  // Map para armazenar canais de chat ativos
+  static final Map<String, PusherChannel> _chatChannels = {};
 
   static Future<void> initialize({HttpService? httpService}) async {
     try {
@@ -78,6 +85,69 @@ class PusherService {
     } catch (e) {
       print('🔴 Pusher - Erro ao se inscrever no canal: $e');
       rethrow;
+    }
+  }
+
+  /// Inscreve em um canal de chat específico usando o formato chat.{chatId}
+  static Future<void> subscribeToChat(int chatId) async {
+    try {
+      if (_pusher == null) {
+        await initialize();
+      }
+      
+      final channelName = 'chat.$chatId';
+      
+      // Verificar se já está inscrito neste canal
+      if (_chatChannels.containsKey(channelName)) {
+        print('🟡 Pusher - Já inscrito no canal: $channelName');
+        return;
+      }
+      
+      print('🟢 Pusher - Inscrevendo no canal: $channelName');
+      
+      final channel = await _pusher!.subscribe(
+        channelName: channelName,
+        onEvent: (event) {
+          print('🟡 Pusher - Evento do canal $channelName: ${event.eventName}');
+          _handleChatEventWithId(event, chatId);
+        },
+      );
+      
+      _chatChannels[channelName] = channel;
+      print('🟢 Pusher - Inscrito com sucesso no canal: $channelName');
+      
+    } catch (e) {
+      print('🔴 Pusher - Erro ao se inscrever no canal chat.$chatId: $e');
+      rethrow;
+    }
+  }
+
+  /// Remove inscrição de um canal de chat específico
+  static Future<void> unsubscribeFromChat(int chatId) async {
+    try {
+      final channelName = 'chat.$chatId';
+      
+      if (_chatChannels.containsKey(channelName)) {
+        final channel = _chatChannels[channelName]!;
+        await _pusher!.unsubscribe(channelName: channelName);
+        _chatChannels.remove(channelName);
+        print('🟢 Pusher - Removida inscrição do canal: $channelName');
+      }
+    } catch (e) {
+      print('🔴 Pusher - Erro ao remover inscrição do canal chat.$chatId: $e');
+    }
+  }
+
+  /// Remove inscrição de todos os canais de chat
+  static Future<void> unsubscribeFromAllChats() async {
+    try {
+      for (final channelName in _chatChannels.keys.toList()) {
+        await _pusher!.unsubscribe(channelName: channelName);
+        print('🟢 Pusher - Removida inscrição do canal: $channelName');
+      }
+      _chatChannels.clear();
+    } catch (e) {
+      print('🔴 Pusher - Erro ao remover inscrições: $e');
     }
   }
 
@@ -169,6 +239,8 @@ class PusherService {
 
   static void _handleChatEvent(PusherEvent event) {
     try {
+      print('🟡 Pusher - Processando evento de chat: ${event.eventName}');
+      
       switch (event.eventName) {
         case 'chat-message':
           _handleChatMessage(event);
@@ -178,6 +250,44 @@ class PusherService {
           break;
         case 'user-left':
           _handleUserLeft(event);
+          break;
+        case 'message-sent':
+          _handleMessageSent(event);
+          break;
+        case 'message-read':
+          _handleMessageRead(event);
+          break;
+        default:
+          print('🟡 Pusher - Evento de chat não tratado: ${event.eventName}');
+      }
+    } catch (e) {
+      print('🔴 Pusher - Erro ao processar evento de chat: $e');
+    }
+  }
+
+  /// Versão sobrecarregada para eventos de chat específicos
+  static void _handleChatEventWithId(PusherEvent event, int chatId) {
+    try {
+      print('🟡 Pusher - Processando evento de chat ID: $chatId: ${event.eventName}');
+      
+      // Notificar listeners específicos de chat
+      onChatEvent?.call(chatId.toString(), event.eventName, event.data);
+      
+      switch (event.eventName) {
+        case 'chat-message':
+          _handleChatMessage(event);
+          break;
+        case 'user-joined':
+          _handleUserJoined(event);
+          break;
+        case 'user-left':
+          _handleUserLeft(event);
+          break;
+        case 'message-sent':
+          _handleMessageSent(event, chatId: chatId);
+          break;
+        case 'message-read':
+          _handleMessageRead(event, chatId: chatId);
           break;
         default:
           print('🟡 Pusher - Evento de chat não tratado: ${event.eventName}');
@@ -238,8 +348,49 @@ class PusherService {
     }
   }
 
+  static void _handleMessageSent(PusherEvent event, {int? chatId}) {
+    try {
+      final data = jsonDecode(event.data);
+      final message = data['message'] ?? '';
+      final sender = data['sender'] ?? 'Unknown';
+      final timestamp = data['timestamp'] ?? DateTime.now().toIso8601String();
+      
+      print('🟢 Pusher - Mensagem enviada: $message de $sender ${chatId != null ? 'no chat $chatId' : ''}');
+      
+      // Notificar listeners específicos de chat
+      if (chatId != null) {
+        onChatEvent?.call(chatId.toString(), 'message-sent', data);
+      }
+      
+    } catch (e) {
+      print('🔴 Pusher - Erro ao processar mensagem enviada: $e');
+    }
+  }
+
+  static void _handleMessageRead(PusherEvent event, {int? chatId}) {
+    try {
+      final data = jsonDecode(event.data);
+      final messageId = data['message_id'] ?? '';
+      final reader = data['reader'] ?? 'Unknown';
+      final timestamp = data['timestamp'] ?? DateTime.now().toIso8601String();
+      
+      print('🟢 Pusher - Mensagem lida: ID $messageId por $reader ${chatId != null ? 'no chat $chatId' : ''}');
+      
+      // Notificar listeners específicos de chat
+      if (chatId != null) {
+        onChatEvent?.call(chatId.toString(), 'message-read', data);
+      }
+      
+    } catch (e) {
+      print('🔴 Pusher - Erro ao processar mensagem lida: $e');
+    }
+  }
+
   static Future<void> disconnect() async {
     try {
+      // Desinscrever de todos os canais de chat
+      await unsubscribeFromAllChats();
+      
       if (_chatChannel != null) {
         await _pusher!.unsubscribe(channelName: _chatChannel!.channelName);
         _chatChannel = null;

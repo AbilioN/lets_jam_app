@@ -48,7 +48,6 @@ class ChatsApi {
 
   Future<MessagesResponse> getChatMessages(int chatId, {int page = 1, int perPage = 50}) async {
     try {
-      // URL correta: /chat/{chatId}/messages
       final response = await _httpService.get('/chat/$chatId/messages?page=$page&per_page=$perPage');
       print('🔵 ChatsApi - Resposta getChatMessages: $response');
       print('🔵 ChatsApi - Tipo da resposta: ${response.runtimeType}');

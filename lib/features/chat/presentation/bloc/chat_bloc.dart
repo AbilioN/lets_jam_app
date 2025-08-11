@@ -1,14 +1,15 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import '../../../../core/services/chat_service.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/services/chat_service.dart' as chat_service;
+import '../../../../core/services/pusher_service.dart' as pusher_service;
 import '../../domain/usecases/get_chat_messages_usecase.dart';
 
 part 'chat_event.dart';
 part 'chat_state.dart';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
-  final ChatService _chatService = ChatService.instance;
+  final chat_service.ChatService _chatService = chat_service.ChatService.instance;
   final GetChatMessagesUseCase _getChatMessagesUseCase;
 
   ChatBloc() : _getChatMessagesUseCase = getIt<GetChatMessagesUseCase>(), super(ChatInitial()) {
@@ -30,23 +31,20 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     emit(ChatLoading());
     
     try {
-      // TODO: Descomentar quando WebSocket estiver funcionando
-      // Configurar callbacks do ChatService
-      // ChatService.onMessageReceived = (message) {
-      //   add(MessageReceived(message: message));
-      // };
+      // Configurar callbacks do PusherService para chat
+      pusher_service.PusherService.onChatMessageReceived = (message) {
+        add(MessageReceived(message: message));
+      };
       
-      // ChatService.onError = (error) {
-      //   print('🔴 ChatBloc - Erro do ChatService: $error');
-      // };
+      pusher_service.PusherService.onChatEvent = (chatId, eventType, data) {
+        print('🔵 ChatBloc - Evento de chat recebido: $eventType para chat $chatId');
+        // Aqui você pode adicionar lógica para diferentes tipos de eventos
+      };
       
-      // Inicializar ChatService (apenas para manter referência)
-      // await _chatService.initialize();
-      
-      // Se um chatId foi especificado, carregar mensagens via API
+      // Inicializar PusherService se necessário
       if (event.chatId != null) {
-        // TODO: Descomentar quando WebSocket estiver funcionando
-        // await _chatService.listenToChat(event.chatId!);
+        // Inscrever no canal de chat específico
+        await pusher_service.PusherService.subscribeToChat(event.chatId!);
         
         // Carregar mensagens do chat via API
         final result = await _getChatMessagesUseCase(
@@ -58,7 +56,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           (messagesResponse) {
             // Converter MessageModel para ChatMessage
             final messages = messagesResponse.messages.map((message) => 
-              ChatMessage(
+              chat_service.ChatMessage(
                 id: message.id,
                 chatId: message.chatId,
                 content: message.content,
@@ -72,7 +70,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
             emit(ChatConnected(
               chatId: event.chatId,
               messages: messages,
-              chats: [], // Lista vazia por enquanto, será preenchida quando WebSocket funcionar
+              chats: [], // Lista vazia por enquanto
             ));
           },
         );
@@ -111,7 +109,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           // );
           
           // FAKE: Simular mensagem enviada temporariamente
-          final fakeMessage = ChatMessage(
+          final fakeMessage = chat_service.ChatMessage(
             id: DateTime.now().millisecondsSinceEpoch,
             chatId: event.chatId!,
             content: event.content,
@@ -122,7 +120,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           );
           
           // Adicionar mensagem ao estado atual
-          final updatedMessages = List<ChatMessage>.from(currentState.messages)..add(fakeMessage);
+          final updatedMessages = List<chat_service.ChatMessage>.from(currentState.messages)..add(fakeMessage);
           
           emit(ChatConnected(
             chatId: currentState.chatId,
@@ -138,7 +136,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           // );
           
           // FAKE: Simular mensagem enviada temporariamente
-          final fakeMessage = ChatMessage(
+          final fakeMessage = chat_service.ChatMessage(
             id: DateTime.now().millisecondsSinceEpoch,
             chatId: 0, // Chat temporário
             content: event.content,
@@ -149,7 +147,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           );
           
           // Adicionar mensagem ao estado atual
-          final updatedMessages = List<ChatMessage>.from(currentState.messages)..add(fakeMessage);
+          final updatedMessages = List<chat_service.ChatMessage>.from(currentState.messages)..add(fakeMessage);
           
           emit(ChatConnected(
             chatId: currentState.chatId,
@@ -320,7 +318,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         (messagesResponse) {
           // Converter MessageModel para ChatMessage
           final messages = messagesResponse.messages.map((message) => 
-            ChatMessage(
+            chat_service.ChatMessage(
               id: message.id,
               chatId: message.chatId,
               content: message.content,
