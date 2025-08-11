@@ -21,7 +21,7 @@ class ChatPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: BlocProvider<ChatBloc>(
-        create: (context) => ChatBloc(),
+        create: (context) => ChatBloc()..add(ChatInitialized(chatId: chatId)),
         child: ChatWidget(
           chatId: chatId,
           otherUserId: otherUserId,

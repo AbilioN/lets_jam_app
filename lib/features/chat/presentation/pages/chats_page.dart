@@ -19,7 +19,7 @@ class ChatsPage extends StatelessWidget {
         foregroundColor: Colors.white,
       ),
       body: BlocProvider(
-        create: (context) => getIt<ChatsBloc>()..add(const LoadChats()),
+        create: (context) => getIt<ChatsBloc>()..add(LoadChats()),
         child: BlocBuilder<ChatsBloc, ChatsState>(
           builder: (context, state) {
             if (state is ChatsLoading) {
@@ -45,7 +45,7 @@ class ChatsPage extends StatelessWidget {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
-                        context.read<ChatsBloc>().add(const LoadChats());
+                        context.read<ChatsBloc>().add(LoadChats());
                       },
                       child: const Text('Tentar Novamente'),
                     ),
@@ -170,6 +170,10 @@ class _ChatTile extends StatelessWidget {
   }
 
   void _openChat(BuildContext context) {
+    // Disparar evento para carregar mensagens do chat
+    context.read<ChatsBloc>().add(LoadChatMessages(chatId: chat.id));
+    
+    // Navegar para o chat
     AppRouter.navigateToChat(
       context,
       chatId: chat.id,

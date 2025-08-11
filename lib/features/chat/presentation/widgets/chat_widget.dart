@@ -28,12 +28,8 @@ class _ChatWidgetState extends State<ChatWidget> {
   @override
   void initState() {
     super.initState();
-    // Inicializar o chat quando o widget for criado
-    context.read<ChatBloc>().add(
-          ChatInitialized(
-            chatId: widget.chatId,
-          ),
-        );
+    // A inicialização do chat é feita automaticamente no ChatBloc
+    // quando o ChatInitialized é disparado
   }
 
   @override

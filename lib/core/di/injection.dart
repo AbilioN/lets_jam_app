@@ -20,6 +20,7 @@ import '../../features/chat/data/repositories/chats_repository_impl.dart';
 import '../../features/chat/data/services/chats_api.dart';
 import '../../features/chat/domain/repositories/chats_repository.dart';
 import '../../features/chat/domain/usecases/get_chats_usecase.dart';
+import '../../features/chat/domain/usecases/get_chat_messages_usecase.dart';
 import '../../features/chat/presentation/bloc/chats_bloc.dart';
 import '../services/chat_service.dart';
 
@@ -106,6 +107,10 @@ Future<void> configureDependencies() async {
   // Chat use cases
   getIt.registerLazySingleton<GetChatsUseCase>(
     () => GetChatsUseCase(getIt<ChatsRepository>()),
+  );
+  
+  getIt.registerLazySingleton<GetChatMessagesUseCase>(
+    () => GetChatMessagesUseCase(getIt<ChatsRepository>()),
   );
   
   // Chat blocs

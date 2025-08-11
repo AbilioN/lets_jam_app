@@ -1,4 +1,5 @@
 import '../../data/models/chat_model.dart';
+import '../../data/models/message_model.dart';
 import '../../data/services/chats_api.dart';
 import '../../domain/repositories/chats_repository.dart';
 
@@ -10,5 +11,10 @@ class ChatsRepositoryImpl implements ChatsRepository {
   @override
   Future<ChatsResponse> getChats() async {
     return await _chatsApi.getChats();
+  }
+
+  @override
+  Future<MessagesResponse> getChatMessages(int chatId, {int page = 1, int perPage = 50}) async {
+    return await _chatsApi.getChatMessages(chatId, page: page, perPage: perPage);
   }
 }

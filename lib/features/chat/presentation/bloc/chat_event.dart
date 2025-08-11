@@ -63,6 +63,21 @@ class LoadConversation extends ChatEvent {
   List<Object> get props => [otherUserId, otherUserType, page, perPage];
 }
 
+class LoadChatMessages extends ChatEvent {
+  final int chatId;
+  final int page;
+  final int perPage;
+
+  const LoadChatMessages({
+    required this.chatId,
+    this.page = 1,
+    this.perPage = 50,
+  });
+
+  @override
+  List<Object> get props => [chatId, page, perPage];
+}
+
 class LoadChats extends ChatEvent {
   final int page;
   final int perPage;

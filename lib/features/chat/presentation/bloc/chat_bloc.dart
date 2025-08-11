@@ -1,18 +1,22 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../../../core/services/chat_service.dart';
+import '../../../../core/di/injection.dart';
+import '../../domain/usecases/get_chat_messages_usecase.dart';
 
 part 'chat_event.dart';
 part 'chat_state.dart';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final ChatService _chatService = ChatService.instance;
+  final GetChatMessagesUseCase _getChatMessagesUseCase;
 
-  ChatBloc() : super(ChatInitial()) {
+  ChatBloc() : _getChatMessagesUseCase = getIt<GetChatMessagesUseCase>(), super(ChatInitial()) {
     on<ChatInitialized>(_onChatInitialized);
     on<MessageSent>(_onMessageSent);
     on<MessageReceived>(_onMessageReceived);
     on<LoadConversation>(_onLoadConversation);
+    on<LoadChatMessages>(_onLoadChatMessages);
     on<LoadChats>(_onLoadChats);
     on<CreatePrivateChat>(_onCreatePrivateChat);
     on<CreateGroupChat>(_onCreateGroupChat);
@@ -41,13 +45,42 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       // Escutar chat se especificado
       if (event.chatId != null) {
         await _chatService.listenToChat(event.chatId!);
+        
+        // Carregar mensagens do chat
+        final result = await _getChatMessagesUseCase(
+          GetChatMessagesParams(chatId: event.chatId!),
+        );
+        
+        result.fold(
+          (failure) => emit(ChatError('Erro ao carregar mensagens: $failure')),
+          (messagesResponse) {
+            // Converter MessageModel para ChatMessage
+            final messages = messagesResponse.messages.map((message) => 
+              ChatMessage(
+                id: message.id,
+                chatId: message.chatId,
+                content: message.content,
+                senderId: message.senderId,
+                senderType: message.senderType,
+                isRead: message.isRead,
+                createdAt: DateTime.parse(message.createdAt),
+              )
+            ).toList();
+            
+            emit(ChatConnected(
+              chatId: event.chatId,
+              messages: messages,
+              chats: ChatService.chats,
+            ));
+          },
+        );
+      } else {
+        emit(ChatConnected(
+          chatId: event.chatId,
+          messages: ChatService.messages,
+          chats: ChatService.chats,
+        ));
       }
-      
-      emit(ChatConnected(
-        chatId: event.chatId,
-        messages: ChatService.messages,
-        chats: ChatService.chats,
-      ));
       
     } catch (e) {
       emit(ChatError('Erro ao conectar ao chat: $e'));
@@ -228,6 +261,50 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       } catch (e) {
         emit(ChatError('Erro ao criar chat em grupo: $e'));
       }
+    }
+  }
+
+  Future<void> _onLoadChatMessages(
+    LoadChatMessages event,
+    Emitter<ChatState> emit,
+  ) async {
+    try {
+      emit(ChatLoading());
+      
+      final result = await _getChatMessagesUseCase(
+        GetChatMessagesParams(
+          chatId: event.chatId,
+          page: event.page,
+          perPage: event.perPage,
+        ),
+      );
+      
+      result.fold(
+        (failure) => emit(ChatError(failure.toString())),
+        (messagesResponse) {
+          // Converter MessageModel para ChatMessage
+          final messages = messagesResponse.messages.map((message) => 
+            ChatMessage(
+              id: message.id,
+              chatId: message.chatId,
+              content: message.content,
+              senderId: message.senderId,
+              senderType: message.senderType,
+              isRead: message.isRead,
+              createdAt: DateTime.parse(message.createdAt),
+            )
+          ).toList();
+          
+          emit(ChatConnected(
+            chatId: event.chatId,
+            messages: messages,
+            chats: ChatService.chats,
+          ));
+        },
+      );
+      
+    } catch (e) {
+      emit(ChatError('Erro ao carregar mensagens: $e'));
     }
   }
 
