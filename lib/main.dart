@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
 import 'core/di/injection.dart';
 import 'core/routes/app_router.dart';
+import 'core/services/pusher_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await configureDependencies();
+  
+  // Inicializar PusherService
+  try {
+    await PusherService.initialize();
+    print('🟢 Main - PusherService inicializado com sucesso');
+    
+    // Testar conexão
+    await PusherService.testConnection();
+    
+  } catch (e) {
+    print('🔴 Main - Erro ao inicializar PusherService: $e');
+  }
+  
   runApp(const MyApp());
 }
 

@@ -30,6 +30,13 @@ class PusherService {
 
   static Future<void> initialize({HttpService? httpService}) async {
     try {
+      print('🟡 Pusher - Iniciando inicialização...');
+      print('🟡 Pusher - AppKey: ${PusherConfig.clientAppKey}');
+      print('🟡 Pusher - Cluster: ${PusherConfig.clientCluster}');
+      print('🟡 Pusher - Host: ${PusherConfig.clientHost}');
+      print('🟡 Pusher - Port: ${PusherConfig.clientPort}');
+      print('🟡 Pusher - Scheme: ${PusherConfig.clientScheme}');
+      
       _pusher = PusherChannelsFlutter.getInstance();
       _httpService = httpService ?? HttpService(
         baseUrl: ApiConfig.baseUrl,
@@ -44,30 +51,36 @@ class PusherService {
         },
         onError: (error, code, e) {
           print('🔴 Pusher - Erro: $error (código: $code)');
+          print('🔴 Pusher - Detalhes do erro: $e');
         },
         onSubscriptionSucceeded: (channelName, data) {
           print('🟢 Pusher - Canal inscrito: $channelName');
+          print('🟢 Pusher - Dados da inscrição: $data');
         },
         onSubscriptionError: (channelName, error) {
           print('🔴 Pusher - Erro na inscrição do canal: $channelName - $error');
         },
         onEvent: (event) {
           print('🟡 Pusher - Evento recebido: ${event.eventName} em ${event.channelName}');
+          print('🟡 Pusher - Dados do evento: ${event.data}');
           _handleEvent(event);
         },
       );
 
+      print('🟡 Pusher - Tentando conectar...');
       await _pusher!.connect();
       print('🟢 Pusher - Conectado com sucesso');
       
     } catch (e) {
       print('🔴 Pusher - Erro na inicialização: $e');
+      print('🔴 Pusher - Stack trace: ${StackTrace.current}');
       rethrow;
     }
   }
 
   static Future<void> subscribeToChatChannel(String channelName) async {
     try {
+      print("subscribing to chat channel");
       if (_pusher == null) {
         await initialize();
       }
@@ -91,11 +104,15 @@ class PusherService {
   /// Inscreve em um canal de chat específico usando o formato chat.{chatId}
   static Future<void> subscribeToChat(int chatId) async {
     try {
+      print('🟡 Pusher - Tentando inscrever no chat $chatId...');
+      
       if (_pusher == null) {
+        print('🟡 Pusher - Pusher não inicializado, inicializando...');
         await initialize();
       }
       
       final channelName = 'chat.$chatId';
+      print('🟡 Pusher - Nome do canal: $channelName');
       
       // Verificar se já está inscrito neste canal
       if (_chatChannels.containsKey(channelName)) {
@@ -104,20 +121,24 @@ class PusherService {
       }
       
       print('🟢 Pusher - Inscrevendo no canal: $channelName');
+      print('🟡 Pusher - Estado do Pusher: ${_pusher?.connectionState}');
       
       final channel = await _pusher!.subscribe(
         channelName: channelName,
         onEvent: (event) {
           print('🟡 Pusher - Evento do canal $channelName: ${event.eventName}');
+          print('🟡 Pusher - Dados do evento: ${event.data}');
           _handleChatEventWithId(event, chatId);
         },
       );
       
       _chatChannels[channelName] = channel;
       print('🟢 Pusher - Inscrito com sucesso no canal: $channelName');
+      print('🟢 Pusher - Total de canais ativos: ${_chatChannels.length}');
       
     } catch (e) {
       print('🔴 Pusher - Erro ao se inscrever no canal chat.$chatId: $e');
+      print('🔴 Pusher - Stack trace: ${StackTrace.current}');
       rethrow;
     }
   }
@@ -240,6 +261,7 @@ class PusherService {
   static void _handleChatEvent(PusherEvent event) {
     try {
       print('🟡 Pusher - Processando evento de chat: ${event.eventName}');
+        print('aqui');
       
       switch (event.eventName) {
         case 'chat-message':
@@ -386,6 +408,39 @@ class PusherService {
     }
   }
 
+  /// Método de teste para verificar a conexão
+  static Future<void> testConnection() async {
+    try {
+      print('🧪 Pusher - Testando conexão...');
+      
+      if (_pusher == null) {
+        print('🧪 Pusher - Pusher não inicializado, inicializando...');
+        await initialize();
+      }
+      
+      print('🧪 Pusher - Estado da conexão: ${_pusher?.connectionState}');
+      print('🧪 Pusher - Tentando inscrever em canal de teste...');
+      
+      // Tentar inscrever em um canal de teste
+      final testChannel = await _pusher!.subscribe(
+        channelName: 'test-channel',
+        onEvent: (event) {
+          print('🧪 Pusher - Evento de teste recebido: ${event.eventName}');
+        },
+      );
+      
+      print('🧪 Pusher - Canal de teste inscrito com sucesso');
+      
+      // Aguardar um pouco e depois desinscrever
+      await Future.delayed(Duration(seconds: 2));
+      await _pusher!.unsubscribe(channelName: 'test-channel');
+      print('🧪 Pusher - Teste concluído com sucesso');
+      
+    } catch (e) {
+      print('🔴 Pusher - Erro no teste de conexão: $e');
+    }
+  }
+
   static Future<void> disconnect() async {
     try {
       // Desinscrever de todos os canais de chat
@@ -412,6 +467,18 @@ class PusherService {
   static void clearMessages() {
     _messages.clear();
   }
+
+  /// Verifica se o Pusher está funcionando
+  static bool get isConnected => _pusher?.connectionState == 'CONNECTED';
+  
+  /// Verifica se o Pusher está inicializado
+  static bool get isInitialized => _pusher != null;
+  
+  /// Obtém o estado atual da conexão
+  static String? get connectionState => _pusher?.connectionState;
+  
+  /// Obtém a lista de canais ativos
+  static List<String> get activeChannels => _chatChannels.keys.toList();
 }
 
 class ChatMessage {
