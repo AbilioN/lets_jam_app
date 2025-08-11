@@ -75,15 +75,56 @@ class MessagesResponse {
   });
 
   factory MessagesResponse.fromJson(Map<String, dynamic> json) {
-    // A API retorna { "success": true, "data": { "messages": [...], ... } }
-    final data = json['data'] as Map<String, dynamic>;
+    print('🔵 MessagesResponse - Processando JSON: ${json.keys.toList()}');
+    
+    // Verificar se o JSON é válido
+    if (json == null) {
+      throw Exception('JSON recebido é null');
+    }
+    
+    // A API pode retornar diferentes formatos
+    List<dynamic> messagesList;
+    bool fromCacheValue;
+    Map<String, dynamic> paginationData;
+    
+    if (json.containsKey('data') && json['data'] is Map<String, dynamic>) {
+      // Formato: { "success": true, "data": { "messages": [...], "from_cache": false, "pagination": {...} } }
+      final data = json['data'] as Map<String, dynamic>;
+      print('🔵 MessagesResponse - Formato com data: ${data.keys.toList()}');
+      
+      if (data.containsKey('messages') && data['messages'] is List) {
+        messagesList = data['messages'] as List<dynamic>;
+      } else {
+        print('🔴 MessagesResponse - Campo "messages" não encontrado ou não é uma lista');
+        messagesList = []; // Lista vazia se não houver mensagens
+      }
+      
+      fromCacheValue = data['from_cache'] as bool? ?? false;
+      
+      if (data.containsKey('pagination') && data['pagination'] is Map<String, dynamic>) {
+        paginationData = data['pagination'] as Map<String, dynamic>;
+      } else {
+        paginationData = {}; // Paginação opcional
+      }
+    } else if (json.containsKey('messages') && json['messages'] is List) {
+      // Formato direto: { "messages": [...], "from_cache": false, "pagination": {...} }
+      print('🔵 MessagesResponse - Formato direto');
+      messagesList = json['messages'] as List<dynamic>;
+      fromCacheValue = json['from_cache'] as bool? ?? false;
+      paginationData = json['pagination'] as Map<String, dynamic>? ?? {};
+    } else {
+      print('🔴 MessagesResponse - Formato não reconhecido, criando resposta vazia');
+      print('🔴 MessagesResponse - Chaves disponíveis: ${json.keys.toList()}');
+      // Retornar resposta vazia em vez de erro
+      messagesList = [];
+      fromCacheValue = false;
+      paginationData = {};
+    }
     
     return MessagesResponse(
-      messages: (data['messages'] as List<dynamic>)
-          .map((message) => MessageModel.fromJson(message as Map<String, dynamic>))
-          .toList(),
-      fromCache: data['from_cache'] as bool? ?? false,
-      pagination: data['pagination'] as Map<String, dynamic>,
+      messages: messagesList.map((message) => MessageModel.fromJson(message as Map<String, dynamic>)).toList(),
+      fromCache: fromCacheValue,
+      pagination: paginationData,
     );
   }
 

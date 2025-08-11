@@ -42,9 +42,13 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<TokenService>(
     () => TokenServiceImpl(getIt<SharedPreferences>()),
   );
+  
+  final baseUrl = 'http://10.0.2.2:8006/api';
+  print('🔵 Injection - Configurando HttpService com baseUrl: $baseUrl');
+  
   getIt.registerLazySingleton<HttpService>(
     () => HttpService(
-      baseUrl: 'http://10.0.2.2:8006/api',
+      baseUrl: baseUrl,
       tokenService: getIt<TokenService>(),
     ),
   );

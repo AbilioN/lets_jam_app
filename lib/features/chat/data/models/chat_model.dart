@@ -65,14 +65,50 @@ class ChatsResponse {
   });
 
   factory ChatsResponse.fromJson(Map<String, dynamic> json) {
-    // A API retorna { "success": true, "data": { "chats": [...], ... } }
-    final data = json['data'] as Map<String, dynamic>;
+    print('🔵 ChatsResponse - Processando JSON: ${json.keys.toList()}');
+    
+    // Verificar se o JSON é válido
+    if (json == null) {
+      throw Exception('JSON recebido é null');
+    }
+    
+    // A API pode retornar diferentes formatos
+    List<dynamic> chatsList;
+    Map<String, dynamic> paginationData;
+    
+    if (json.containsKey('data') && json['data'] is Map<String, dynamic>) {
+      // Formato: { "success": true, "data": { "chats": [...], "pagination": {...} } }
+      final data = json['data'] as Map<String, dynamic>;
+      print('🔵 ChatsResponse - Formato com data: ${data.keys.toList()}');
+      
+      if (data.containsKey('chats') && data['chats'] is List) {
+        chatsList = data['chats'] as List<dynamic>;
+      } else {
+        print('🔴 ChatsResponse - Campo "chats" não encontrado ou não é uma lista');
+        chatsList = []; // Lista vazia se não houver chats
+      }
+      
+      if (data.containsKey('pagination') && data['pagination'] is Map<String, dynamic>) {
+        paginationData = data['pagination'] as Map<String, dynamic>;
+      } else {
+        paginationData = {}; // Paginação opcional
+      }
+    } else if (json.containsKey('chats') && json['chats'] is List) {
+      // Formato direto: { "chats": [...], "pagination": {...} }
+      print('🔵 ChatsResponse - Formato direto');
+      chatsList = json['chats'] as List<dynamic>;
+      paginationData = json['pagination'] as Map<String, dynamic>? ?? {};
+    } else {
+      print('🔴 ChatsResponse - Formato não reconhecido, criando resposta vazia');
+      print('🔴 ChatsResponse - Chaves disponíveis: ${json.keys.toList()}');
+      // Retornar resposta vazia em vez de erro
+      chatsList = [];
+      paginationData = {};
+    }
     
     return ChatsResponse(
-      chats: (data['chats'] as List<dynamic>)
-          .map((chat) => ChatModel.fromJson(chat as Map<String, dynamic>))
-          .toList(),
-      pagination: data['pagination'] as Map<String, dynamic>,
+      chats: chatsList.map((chat) => ChatModel.fromJson(chat as Map<String, dynamic>)).toList(),
+      pagination: paginationData,
     );
   }
 
