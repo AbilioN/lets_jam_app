@@ -65,11 +65,14 @@ class ChatsResponse {
   });
 
   factory ChatsResponse.fromJson(Map<String, dynamic> json) {
+    // A API retorna { "success": true, "data": { "chats": [...], ... } }
+    final data = json['data'] as Map<String, dynamic>;
+    
     return ChatsResponse(
-      chats: (json['chats'] as List<dynamic>)
+      chats: (data['chats'] as List<dynamic>)
           .map((chat) => ChatModel.fromJson(chat as Map<String, dynamic>))
           .toList(),
-      pagination: json['pagination'] as Map<String, dynamic>,
+      pagination: data['pagination'] as Map<String, dynamic>,
     );
   }
 

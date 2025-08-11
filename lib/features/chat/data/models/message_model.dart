@@ -75,12 +75,15 @@ class MessagesResponse {
   });
 
   factory MessagesResponse.fromJson(Map<String, dynamic> json) {
+    // A API retorna { "success": true, "data": { "messages": [...], ... } }
+    final data = json['data'] as Map<String, dynamic>;
+    
     return MessagesResponse(
-      messages: (json['messages'] as List<dynamic>)
+      messages: (data['messages'] as List<dynamic>)
           .map((message) => MessageModel.fromJson(message as Map<String, dynamic>))
           .toList(),
-      fromCache: json['from_cache'] as bool? ?? false,
-      pagination: json['pagination'] as Map<String, dynamic>,
+      fromCache: data['from_cache'] as bool? ?? false,
+      pagination: data['pagination'] as Map<String, dynamic>,
     );
   }
 
