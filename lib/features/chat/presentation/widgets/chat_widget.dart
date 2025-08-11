@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/chat_bloc.dart';
-import '../../../../core/services/chat_service.dart';
+import '../../../../core/services/chat_service.dart' as chat_service;
 
 class ChatWidget extends StatefulWidget {
   final int? chatId;
@@ -65,6 +65,40 @@ class _ChatWidgetState extends State<ChatWidget> {
         );
       }
     });
+  }
+
+  void _testPusherMessage() {
+    // Simular uma mensagem recebida do Pusher
+    print('🧪 ChatWidget - Testando mensagem do Pusher...');
+    
+    // Simular dados que viriam do Pusher
+    final testData = {
+      'message': 'Mensagem de teste do Pusher! 🚀',
+      'sender_id': 999,
+      'sender_type': 'user',
+      'created_at': DateTime.now().toIso8601String(),
+    };
+    
+    // Chamar diretamente o método de processamento do ChatBloc
+    final chatBloc = context.read<ChatBloc>();
+    if (chatBloc is ChatBloc) {
+      // Usar reflection para acessar o método privado (apenas para teste)
+      // Em produção, isso seria feito via eventos
+      print('🧪 ChatWidget - Dados de teste: $testData');
+      
+      // Alternativa: disparar um evento de teste
+      chatBloc.add(MessageReceived(
+        message: chat_service.ChatMessage(
+          id: DateTime.now().millisecondsSinceEpoch,
+          chatId: widget.chatId ?? 0,
+          content: testData['message'] as String,
+          senderId: testData['sender_id'] as int,
+          senderType: testData['sender_type'] as String,
+          isRead: false,
+          createdAt: DateTime.parse(testData['created_at'] as String),
+        ),
+      ));
+    }
   }
 
   @override
@@ -195,6 +229,17 @@ class _ChatWidgetState extends State<ChatWidget> {
                           color: Colors.white,
                         ),
                       ),
+                      // Botão de teste para simular mensagem do Pusher
+                      IconButton(
+                        onPressed: () {
+                          _testPusherMessage();
+                        },
+                        icon: const Icon(
+                          Icons.message,
+                          color: Colors.white,
+                        ),
+                        tooltip: 'Testar mensagem Pusher',
+                      ),
                     ],
                   ),
                 ),
@@ -298,7 +343,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage message, bool isOwnMessage) {
+  Widget _buildMessageBubble(chat_service.ChatMessage message, bool isOwnMessage) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(

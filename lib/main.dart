@@ -13,7 +13,11 @@ void main() async {
     print('🟢 Main - PusherService inicializado com sucesso');
     
     // Testar conexão
-    await PusherService.testConnection();
+    // await PusherService.testConnection();
+    
+    // Testar inscrição em canal de chat específico
+    print('🧪 Main - Testando inscrição em canal private-chat.12');
+    await PusherService.testChatChannelSubscription(12);
     
   } catch (e) {
     print('🔴 Main - Erro ao inicializar PusherService: $e');

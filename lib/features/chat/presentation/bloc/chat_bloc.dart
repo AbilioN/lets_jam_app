@@ -11,6 +11,9 @@ part 'chat_state.dart';
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final chat_service.ChatService _chatService = chat_service.ChatService.instance;
   final GetChatMessagesUseCase _getChatMessagesUseCase;
+  
+  // Rastrear o chat ativo para gerenciar inscrições
+  int? _currentChatId;
 
   ChatBloc() : _getChatMessagesUseCase = getIt<GetChatMessagesUseCase>(), super(ChatInitial()) {
     on<ChatInitialized>(_onChatInitialized);
@@ -31,30 +34,56 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     emit(ChatLoading());
     
     try {
-      // Configurar callbacks do PusherService para chat
-      pusher_service.PusherService.onChatMessageReceived = (pusherMessage) {
-        // Converter PusherMessage para ChatMessage do chat_service
-        final chatMessage = chat_service.ChatMessage(
-          id: DateTime.now().millisecondsSinceEpoch, // ID temporário
-          chatId: event.chatId ?? 0,
-          content: pusherMessage.message,
-          senderId: 0, // TODO: Extrair do pusherMessage
-          senderType: 'user', // TODO: Extrair do pusherMessage
-          isRead: false,
-          createdAt: DateTime.now(),
-        );
-        add(MessageReceived(message: chatMessage));
-      };
+      // Se já estamos inscritos em outro chat, desinscrever primeiro
+      if (_currentChatId != null && _currentChatId != event.chatId) {
+        print('🟡 ChatBloc - Mudando de chat: $_currentChatId -> ${event.chatId}');
+        print('🟡 ChatBloc - Desinscrevendo do canal anterior: private-chat.$_currentChatId');
+        await pusher_service.PusherService.unsubscribeFromChat(_currentChatId!);
+      }
       
+      // Atualizar o chat ativo
+      _currentChatId = event.chatId;
+      
+      // Configurar callbacks do PusherService para chat
       pusher_service.PusherService.onChatEvent = (chatId, eventType, data) {
         print('🔵 ChatBloc - Evento de chat recebido: $eventType para chat $chatId');
-        // Aqui você pode adicionar lógica para diferentes tipos de eventos
+        print('🔵 ChatBloc - Dados do evento: $data');
+        
+        // Verificar se o evento é para o chat ativo
+        if (chatId == _currentChatId.toString()) {
+          print('🟢 ChatBloc - Evento é para o chat ativo: $chatId');
+          
+          // Processar diferentes tipos de eventos
+          switch (eventType) {
+            case 'message-sent':
+              _processPusherMessage(chatId, data);
+              break;
+            case 'chat-message':
+              _processPusherMessage(chatId, data);
+              break;
+            case 'user-joined':
+              print('🟡 ChatBloc - Usuário entrou no chat: $data');
+              break;
+            case 'user-left':
+              print('🟡 ChatBloc - Usuário saiu do chat: $data');
+              break;
+            default:
+              print('🟡 ChatBloc - Evento não tratado: $eventType');
+          }
+        } else {
+          print('🟡 ChatBloc - Evento não é para o chat ativo (${chatId} != ${_currentChatId})');
+        }
       };
       
       // Inicializar PusherService se necessário
       if (event.chatId != null) {
+        print('🟡 ChatBloc - Inscrevendo no canal: private-chat.${event.chatId}');
+        
         // Inscrever no canal de chat específico
         await pusher_service.PusherService.subscribeToChat(event.chatId!);
+        
+        // Log do status após inscrição
+        _logChannelStatus();
         
         // Carregar mensagens do chat via API
         final result = await _getChatMessagesUseCase(
@@ -183,15 +212,41 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     if (state is ChatConnected) {
       final currentState = state as ChatConnected;
       
-      // TODO: Descomentar quando WebSocket estiver funcionando
-      // emit(ChatConnected(
-      //   chatId: currentState.chatId,
-      //   messages: ChatService.messages,
-      //   chats: ChatService.chats,
-      // ));
+      print('🔵 ChatBloc - Mensagem recebida: ${event.message.content}');
+      print('🔵 ChatBloc - Chat ID: ${event.message.chatId}');
+      print('🔵 ChatBloc - Remetente: ${event.message.senderId}');
       
-      // Por enquanto, apenas manter o estado atual
-      // As mensagens são gerenciadas via API
+      // Verificar se a mensagem é para o chat atual
+      if (event.message.chatId == currentState.chatId) {
+        // Adicionar a nova mensagem à lista existente
+        final updatedMessages = List<chat_service.ChatMessage>.from(currentState.messages);
+        
+        // Verificar se a mensagem já existe (evitar duplicatas)
+        final messageExists = updatedMessages.any((msg) => 
+          msg.id == event.message.id || 
+          (msg.content == event.message.content && 
+           msg.senderId == event.message.senderId &&
+           msg.createdAt.difference(event.message.createdAt).inSeconds.abs() < 5)
+        );
+        
+        if (!messageExists) {
+          updatedMessages.add(event.message);
+          print('🟢 ChatBloc - Mensagem adicionada ao chat: ${event.message.content}');
+          
+          // Emitir novo estado com a mensagem adicionada
+          emit(ChatConnected(
+            chatId: currentState.chatId,
+            messages: updatedMessages,
+            chats: currentState.chats,
+          ));
+        } else {
+          print('🟡 ChatBloc - Mensagem já existe, ignorando duplicata');
+        }
+      } else {
+        print('🟡 ChatBloc - Mensagem não é para este chat (${event.message.chatId} != ${currentState.chatId})');
+      }
+    } else {
+      print('🟡 ChatBloc - Estado não é ChatConnected, ignorando mensagem');
     }
   }
 
@@ -357,6 +412,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     Emitter<ChatState> emit,
   ) async {
     try {
+      // Desinscrever do chat ativo se houver
+      if (_currentChatId != null) {
+        print('🟡 ChatBloc - Desconectando do chat: $_currentChatId');
+        print('🟡 ChatBloc - Desinscrevendo do canal: private-chat.$_currentChatId');
+        await pusher_service.PusherService.unsubscribeFromChat(_currentChatId!);
+        _currentChatId = null;
+      }
+      
       // TODO: Descomentar quando WebSocket estiver funcionando
       // await _chatService.disconnect();
       
@@ -365,5 +428,47 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     } catch (e) {
       emit(ChatError('Erro ao desconectar: $e'));
     }
+  }
+
+  void _processPusherMessage(String chatId, Map<String, dynamic> data) {
+    print('🔵 ChatBloc - Processando mensagem do Pusher para chat: $chatId');
+    print('🔵 ChatBloc - Dados brutos: $data');
+    print('🔵 ChatBloc - Tipo dos dados: ${data.runtimeType}');
+    
+    final messageContent = data['message'] as String?;
+    final senderId = data['sender_id'] as int?;
+    final senderType = data['sender_type'] as String?;
+    final createdAt = data['created_at'] as String?;
+
+    print('🔵 ChatBloc - message: $messageContent');
+    print('🔵 ChatBloc - sender_id: $senderId (tipo: ${senderId.runtimeType})');
+    print('🔵 ChatBloc - sender_type: $senderType');
+    print('🔵 ChatBloc - created_at: $createdAt');
+
+    if (messageContent != null && senderId != null && senderType != null && createdAt != null) {
+      final message = chat_service.ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch, // ID temporário
+        chatId: int.parse(chatId), // Converter String para int
+        content: messageContent,
+        senderId: senderId,
+        senderType: senderType,
+        isRead: false,
+        createdAt: DateTime.parse(createdAt),
+      );
+      
+      print('🟢 ChatBloc - Mensagem criada com sucesso: ${message.content}');
+      add(MessageReceived(message: message));
+    } else {
+      print('🔴 ChatBloc - Dados de mensagem incompletos do Pusher: $data');
+      print('🔴 ChatBloc - message: $messageContent, sender_id: $senderId, sender_type: $senderType, created_at: $createdAt');
+    }
+  }
+
+  /// Verifica o status das inscrições de canal
+  void _logChannelStatus() {
+    print('🔵 ChatBloc - Status das inscrições:');
+    print('🔵 ChatBloc - Chat ativo: $_currentChatId');
+    print('🔵 ChatBloc - Canais ativos no Pusher: ${pusher_service.PusherService.activeChannels}');
+    print('🔵 ChatBloc - Estado da conexão: ${pusher_service.PusherService.connectionState}');
   }
 } 
