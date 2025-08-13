@@ -5,6 +5,7 @@ import '../../../../core/di/injection.dart';
 import '../../../../core/services/chat_service.dart' as chat_service;
 import '../../../../core/services/pusher_service.dart' as pusher_service;
 import '../../domain/usecases/get_chat_messages_usecase.dart';
+import '../../../../core/services/http_service.dart' as http_service;
 
 part 'chat_event.dart';
 part 'chat_state.dart';
@@ -136,71 +137,38 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       final currentState = state as ChatConnected;
       
       try {
-        emit(ChatLoading());
-        
-        // TODO: Descomentar quando WebSocket estiver funcionando
-        // ChatMessage message;
+        // NÃO emitir ChatLoading - manter o estado atual
+        // emit(ChatLoading()); // ← REMOVIDO
         
         if (event.chatId != null) {
-          // Enviar mensagem para chat específico
-          // message = await _chatService.sendMessageToChat(
-          //   chatId: event.chatId!,
-          //   content: event.content,
-          // );
-          
-          // FAKE: Simular mensagem enviada temporariamente
-          final fakeMessage = chat_service.ChatMessage(
-            id: DateTime.now().millisecondsSinceEpoch,
-            chatId: event.chatId!,
-            content: event.content,
-            senderId: 1, // TODO: Obter ID do usuário atual
-            senderType: 'user',
-            isRead: false,
-            createdAt: DateTime.now(),
+          // Enviar mensagem real via API
+          final httpService = getIt<http_service.HttpService>();
+          final response = await httpService.post(
+            '/chat/${event.chatId}/send',
+            {
+              'content': event.content,
+              'message_type': 'text',
+            },
           );
           
-          // Adicionar mensagem ao estado atual
-          final updatedMessages = List<chat_service.ChatMessage>.from(currentState.messages)..add(fakeMessage);
+          print('🟢 ChatBloc - Mensagem enviada via API: ${event.content}');
+          print('🟢 ChatBloc - Response: $response');
           
-          emit(ChatConnected(
-            chatId: currentState.chatId,
-            messages: updatedMessages,
-            chats: currentState.chats,
-          ));
+          // A mensagem será recebida via WebSocket do Pusher
+          // e processada pelo callback onChatEvent
+          
+          // Manter o estado atual - não emitir nada
+          // A mensagem será adicionada quando o evento Pusher chegar
+          // emit(currentState); // ← REMOVIDO
+          
         } else {
           // Enviar mensagem para usuário (cria/usa chat privado)
-          // message = await _chatService.sendMessageToUser(
-          //   content: event.content,
-          //   otherUserId: event.otherUserId!,
-          //   otherUserType: event.otherUserType!,
-          // );
-          
-          // FAKE: Simular mensagem enviada temporariamente
-          final fakeMessage = chat_service.ChatMessage(
-            id: DateTime.now().millisecondsSinceEpoch,
-            chatId: 0, // Chat temporário
-            content: event.content,
-            senderId: 1, // TODO: Obter ID do usuário atual
-            senderType: 'user',
-            isRead: false,
-            createdAt: DateTime.now(),
-          );
-          
-          // Adicionar mensagem ao estado atual
-          final updatedMessages = List<chat_service.ChatMessage>.from(currentState.messages)..add(fakeMessage);
-          
-          emit(ChatConnected(
-            chatId: currentState.chatId,
-            messages: updatedMessages,
-            chats: currentState.chats,
-          ));
+          // TODO: Implementar quando WebSocket estiver funcionando
+          emit(ChatError('Funcionalidade de chat privado não implementada ainda'));
         }
         
-        // TODO: Descomentar quando WebSocket estiver funcionando
-        // A mensagem será adicionada através do evento MessageReceived
-        // que é disparado pelo callback do ChatService
-        
       } catch (e) {
+        print('🔴 ChatBloc - Erro ao enviar mensagem: $e');
         emit(ChatError('Erro ao enviar mensagem: $e'));
       }
     }
