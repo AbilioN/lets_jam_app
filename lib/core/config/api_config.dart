@@ -4,11 +4,11 @@ class ApiConfig {
   // URLs base para diferentes ambientes
   static const String _localhost = 'http://10.0.2.2:8006/api';
   static const String _androidEmulator = 'http://10.0.2.2:8006/api';
-  static const String _iosSimulator = 'http://localhost:8006/api';
+  static const String _iosSimulator = 'http://192.168.1.173:8006/api';
   
   // Para dispositivo físico, você precisa usar o IP da sua máquina na rede local
   // Exemplo: 'http://192.168.1.100:8006/api'
-  static const String _physicalDevice = 'http://192.168.1.100:8006/api'; // Ajuste para seu IP
+  static const String _physicalDevice = 'http://192.168.1.173:8006/api'; // IP da sua máquina
   
   static String get baseUrl {
     if (kDebugMode) {

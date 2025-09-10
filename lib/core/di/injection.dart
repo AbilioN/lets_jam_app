@@ -6,6 +6,7 @@ import '../network/network_info.dart';
 import '../network/network_info_impl.dart';
 import '../services/token_service.dart';
 import '../services/http_service.dart';
+import '../config/api_config.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
@@ -43,7 +44,7 @@ Future<void> configureDependencies() async {
     () => TokenServiceImpl(getIt<SharedPreferences>()),
   );
   
-  final baseUrl = 'http://10.0.2.2:8006/api';
+  final baseUrl = ApiConfig.baseUrl;
   print('🔵 Injection - Configurando HttpService com baseUrl: $baseUrl');
   
   getIt.registerLazySingleton<HttpService>(
