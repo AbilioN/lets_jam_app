@@ -187,6 +187,17 @@ class _ChatWidgetState extends State<ChatWidget> {
                   ),
                   child: Row(
                     children: [
+                      // Botão de voltar
+                      IconButton(
+                        onPressed: () {
+                          print('🧪 ChatWidget - Voltando para a tela anterior');
+                          Navigator.pop(context);
+                        },
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                        ),
+                      ),
                       const Icon(
                         Icons.chat_bubble_outline,
                         color: Colors.white,
