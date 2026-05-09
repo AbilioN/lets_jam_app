@@ -54,8 +54,9 @@ class ChatsApi {
       
       // Deixar a validação para o fromJson
       return MessagesResponse.fromJson(response);
-    } catch (e) {
+    } catch (e, st) {
       print('🔴 ChatsApi - Erro getChatMessages: $e');
+      print('🔴 ChatsApi - Stack: $st');
       throw Exception('Erro ao buscar mensagens do chat: $e');
     }
   }

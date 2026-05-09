@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/chat_bloc.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/services/chat_service.dart' as chat_service;
 
 class ChatWidget extends StatefulWidget {
@@ -286,16 +287,24 @@ class _ChatWidgetState extends State<ChatWidget> {
                             ],
                           ),
                         )
-                      : ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(16),
-                          itemCount: state.messages.length,
-                          itemBuilder: (context, index) {
-                            final message = state.messages[index];
-                            // TODO: Obter o ID do usuário atual do AuthBloc ou similar
-                            final isOwnMessage = message.senderId == 1; // Temporário
+                      : Builder(
+                          builder: (context) {
+                            final authState = context.read<AuthBloc>().state;
+                            final currentUserId = authState is AuthAuthenticated
+                                ? int.tryParse(authState.user.id)
+                                : null;
 
-                            return _buildMessageBubble(message, isOwnMessage);
+                            return ListView.builder(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.all(16),
+                              itemCount: state.messages.length,
+                              itemBuilder: (context, index) {
+                                final message = state.messages[index];
+                                final isOwnMessage = currentUserId != null &&
+                                    message.senderId == currentUserId;
+                                return _buildMessageBubble(message, isOwnMessage);
+                              },
+                            );
                           },
                         ),
                 ),
@@ -355,21 +364,25 @@ class _ChatWidgetState extends State<ChatWidget> {
   }
 
   Widget _buildMessageBubble(chat_service.ChatMessage message, bool isOwnMessage) {
+    final senderLabel = message.senderType == 'admin' ? 'Admin' : 'Usuário';
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment:
             isOwnMessage ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isOwnMessage) ...[
             CircleAvatar(
               radius: 16,
               backgroundColor: _getAvatarColor(message.senderType),
               child: Text(
-                message.senderType.isNotEmpty ? message.senderType[0].toUpperCase() : '?',
+                senderLabel[0].toUpperCase(),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
+                  fontSize: 12,
                 ),
               ),
             ),
@@ -382,18 +395,25 @@ class _ChatWidgetState extends State<ChatWidget> {
                 color: isOwnMessage
                     ? Theme.of(context).primaryColor
                     : Colors.grey[200],
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: Radius.circular(isOwnMessage ? 18 : 4),
+                  bottomRight: Radius.circular(isOwnMessage ? 4 : 18),
+                ),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: isOwnMessage
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
                 children: [
                   if (!isOwnMessage) ...[
                     Text(
-                      '${message.senderType} (ID: ${message.senderId})',
+                      senderLabel,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
-                        color: isOwnMessage ? Colors.white : Colors.grey[600],
+                        color: _getAvatarColor(message.senderType),
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -404,7 +424,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                       color: isOwnMessage ? Colors.white : Colors.black87,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     _formatTime(message.createdAt),
                     style: TextStyle(
@@ -421,11 +441,12 @@ class _ChatWidgetState extends State<ChatWidget> {
             CircleAvatar(
               radius: 16,
               backgroundColor: Theme.of(context).primaryColor,
-              child: Text(
-                message.senderType.isNotEmpty ? message.senderType[0].toUpperCase() : '?',
-                style: const TextStyle(
+              child: const Text(
+                'V',
+                style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
+                  fontSize: 12,
                 ),
               ),
             ),

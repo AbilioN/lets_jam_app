@@ -27,18 +27,26 @@ class MessageModel {
 
   factory MessageModel.fromJson(Map<String, dynamic> json) {
     return MessageModel(
-      id: json['id'] as int,
-      chatId: json['chat_id'] as int,
+      id: _toInt(json['id']),
+      chatId: _toInt(json['chat_id']),
       content: json['content'] as String,
-      senderId: json['sender_id'] as int,
+      senderId: _toInt(json['sender_id']),
       senderType: json['sender_type'] as String,
-      messageType: json['message_type'] as String,
+      messageType: json['message_type'] as String? ?? 'text',
       metadata: json['metadata'] as Map<String, dynamic>?,
-      isRead: json['is_read'] as bool? ?? false,
+      // MySQL stores booleans as TINYINT(1): 0 or 1
+      isRead: json['is_read'] == true || json['is_read'] == 1,
       readAt: json['read_at'] as String?,
       createdAt: json['created_at'] as String,
       updatedAt: json['updated_at'] as String?,
     );
+  }
+
+  static int _toInt(dynamic v) {
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    if (v is String) return int.parse(v);
+    return 0;
   }
 
   Map<String, dynamic> toJson() {
@@ -121,8 +129,20 @@ class MessagesResponse {
       paginationData = {};
     }
     
+    final parsedMessages = <MessageModel>[];
+    for (int i = 0; i < messagesList.length; i++) {
+      try {
+        parsedMessages.add(MessageModel.fromJson(messagesList[i] as Map<String, dynamic>));
+      } catch (e, st) {
+        print('🔴 MessagesResponse - Erro ao parsear mensagem[$i]: $e');
+        print('🔴 MessagesResponse - Dados: ${messagesList[i]}');
+        print('🔴 MessagesResponse - Stack: $st');
+        rethrow;
+      }
+    }
+
     return MessagesResponse(
-      messages: messagesList.map((message) => MessageModel.fromJson(message as Map<String, dynamic>)).toList(),
+      messages: parsedMessages,
       fromCache: fromCacheValue,
       pagination: paginationData,
     );

@@ -23,16 +23,23 @@ class ChatModel {
 
   factory ChatModel.fromJson(Map<String, dynamic> json) {
     return ChatModel(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      type: json['type'] as String,
+      id: _toInt(json['id']),
+      name: json['name'] as String? ?? '',
+      type: json['type'] as String? ?? 'private',
       description: json['description'] as String? ?? '',
       lastMessage: json['last_message'] as String?,
-      unreadCount: json['unread_count'] as int? ?? 0,
-      participantsCount: json['participants_count'] as int? ?? 0,
-      createdAt: json['created_at'] as String,
-      updatedAt: json['updated_at'] as String,
+      unreadCount: _toInt(json['unread_count'] ?? 0),
+      participantsCount: _toInt(json['participants_count'] ?? 0),
+      createdAt: json['created_at'] as String? ?? '',
+      updatedAt: json['updated_at'] as String? ?? '',
     );
+  }
+
+  static int _toInt(dynamic v) {
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    if (v is String) return int.tryParse(v) ?? 0;
+    return 0;
   }
 
   Map<String, dynamic> toJson() {

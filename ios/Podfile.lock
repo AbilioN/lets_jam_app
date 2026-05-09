@@ -38,12 +38,12 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/sqflite_darwin/darwin"
 
 SPEC CHECKSUMS:
-  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   NWWebSocket: b4741420f1976e1dff4da3edad00c401e4f1d769
-  pusher_channels_flutter: 01297e6e420e0ad61a6e5901e27bb272a6f58ec2
+  pusher_channels_flutter: 19ee24691d26965e9efca571f1620f536b9882bf
   PusherSwift: fa3d5f6587c20ad5790de87a5c9b150367b5f0f5
-  shared_preferences_foundation: fcdcbc04712aee1108ac7fda236f363274528f78
-  sqflite_darwin: 5a7236e3b501866c1c9befc6771dfd73ffb8702d
+  shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
+  sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
   TweetNacl: 3abf4d1d2082b0114e7a67410e300892448951e6
 
 PODFILE CHECKSUM: f79e1872da79a29354b04cf03619f8f3d69fe58e

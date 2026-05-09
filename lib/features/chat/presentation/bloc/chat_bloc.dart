@@ -6,9 +6,13 @@ import '../../../../core/services/chat_service.dart' as chat_service;
 import '../../../../core/services/pusher_service.dart' as pusher_service;
 import '../../domain/usecases/get_chat_messages_usecase.dart';
 import '../../../../core/services/http_service.dart' as http_service;
+import '../../../auth/presentation/bloc/auth_bloc.dart' as auth_bloc;
 
 part 'chat_event.dart';
 part 'chat_state.dart';
+
+// MySQL datetime uses a space separator; Dart's DateTime.parse requires 'T'.
+DateTime _parseDate(String raw) => DateTime.parse(raw.replaceAll(' ', 'T'));
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final chat_service.ChatService _chatService = chat_service.ChatService.instance;
@@ -104,7 +108,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
                 senderId: message.senderId,
                 senderType: message.senderType,
                 isRead: message.isRead,
-                createdAt: DateTime.parse(message.createdAt),
+                createdAt: _parseDate(message.createdAt),
               )
             ).toList();
             
@@ -153,13 +157,29 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           
           print('🟢 ChatBloc - Mensagem enviada via API: ${event.content}');
           print('🟢 ChatBloc - Response: $response');
-          
-          // A mensagem será recebida via WebSocket do Pusher
-          // e processada pelo callback onChatEvent
-          
-          // Manter o estado atual - não emitir nada
-          // A mensagem será adicionada quando o evento Pusher chegar
-          // emit(currentState); // ← REMOVIDO
+
+          // API returns {status: queued} — no full message payload.
+          // Build an optimistic message from known data so it appears immediately.
+          final authState = getIt<auth_bloc.AuthBloc>().state;
+          final senderId = authState is auth_bloc.AuthAuthenticated
+              ? (int.tryParse(authState.user.id) ?? 0)
+              : 0;
+
+          final optimisticMsg = chat_service.ChatMessage(
+            id: DateTime.now().millisecondsSinceEpoch,
+            chatId: event.chatId!,
+            content: event.content,
+            senderId: senderId,
+            senderType: 'user',
+            isRead: false,
+            createdAt: DateTime.now(),
+          );
+          final updated = List<chat_service.ChatMessage>.from(currentState.messages)..add(optimisticMsg);
+          emit(ChatConnected(
+            chatId: currentState.chatId,
+            messages: updated,
+            chats: currentState.chats,
+          ));
           
         } else {
           // Enviar mensagem para usuário (cria/usa chat privado)
@@ -359,7 +379,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
               senderId: message.senderId,
               senderType: message.senderType,
               isRead: message.isRead,
-              createdAt: DateTime.parse(message.createdAt),
+              createdAt: _parseDate(message.createdAt),
             )
           ).toList();
           
@@ -424,7 +444,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     }
     
     final messageContent = messageData['content'] as String?;
-    final senderId = messageData['sender_id'] as int?;
+    final senderId = _toIntNullable(messageData['sender_id']);
     final senderType = messageData['sender_type'] as String?;
     final createdAt = messageData['created_at'] as String?;
 
@@ -441,7 +461,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         senderId: senderId,
         senderType: senderType,
         isRead: messageData['is_read'] as bool? ?? false,
-        createdAt: DateTime.parse(createdAt),
+        createdAt: _parseDate(createdAt),
       );
       
       print('🟢 ChatBloc - Mensagem criada com sucesso: ${message.content}');
@@ -450,6 +470,14 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       print('🔴 ChatBloc - Dados de mensagem incompletos do Pusher: $messageData');
       print('🔴 ChatBloc - content: $messageContent, sender_id: $senderId, sender_type: $senderType, created_at: $createdAt');
     }
+  }
+
+  static int? _toIntNullable(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    if (v is String) return int.tryParse(v);
+    return null;
   }
 
   /// Verifica o status das inscrições de canal
