@@ -31,6 +31,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<CreatePrivateChat>(_onCreatePrivateChat);
     on<CreateGroupChat>(_onCreateGroupChat);
     on<ChatDisconnected>(_onChatDisconnected);
+    on<StartTyping>(_onStartTyping);
+    on<StopTyping>(_onStopTyping);
   }
 
   Future<void> _onChatInitialized(
@@ -81,11 +83,24 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         }
       };
       
-      // Inicializar PusherService se necessário
+      // Register personal channel callback so messages from any chat update this bloc
+      pusher_service.PusherService.onChatMessageReceived = (msg) {
+        add(MessageReceived(message: chat_service.ChatMessage(
+          id: msg.id is int ? msg.id as int : (int.tryParse(msg.id.toString()) ?? 0),
+          chatId: msg.chatId is int ? msg.chatId as int : (int.tryParse(msg.chatId.toString()) ?? 0),
+          content: msg.content,
+          senderId: msg.senderId is int ? msg.senderId as int : (int.tryParse(msg.senderId.toString()) ?? 0),
+          senderType: msg.senderType,
+          isRead: msg.isRead,
+          createdAt: msg.createdAt,
+        )));
+      };
+
+      // Subscribe to per-chat private channel for typing indicators
       if (event.chatId != null) {
-        print('🟡 ChatBloc - Inscrevendo no canal: chat.${event.chatId}');
-        
-        // Inscrever no canal de chat específico
+        print('🟡 ChatBloc - Inscrevendo no canal: private-chat.${event.chatId}');
+
+        // Subscribe to private-chat.{chatId} for typing indicators only
         await pusher_service.PusherService.subscribeToChat(event.chatId!);
         
         // Log do status após inscrição
@@ -478,6 +493,28 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     if (v is double) return v.toInt();
     if (v is String) return int.tryParse(v);
     return null;
+  }
+
+  Future<void> _onStartTyping(
+    StartTyping event,
+    Emitter<ChatState> emit,
+  ) async {
+    final authState = getIt<auth_bloc.AuthBloc>().state;
+    if (authState is auth_bloc.AuthAuthenticated) {
+      final userId = int.tryParse(authState.user.id) ?? 0;
+      await pusher_service.PusherService.triggerTyping(event.chatId, userId, true);
+    }
+  }
+
+  Future<void> _onStopTyping(
+    StopTyping event,
+    Emitter<ChatState> emit,
+  ) async {
+    final authState = getIt<auth_bloc.AuthBloc>().state;
+    if (authState is auth_bloc.AuthAuthenticated) {
+      final userId = int.tryParse(authState.user.id) ?? 0;
+      await pusher_service.PusherService.triggerTyping(event.chatId, userId, false);
+    }
   }
 
   /// Verifica o status das inscrições de canal

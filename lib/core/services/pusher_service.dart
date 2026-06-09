@@ -10,546 +10,409 @@ class PusherService {
   static PusherChannelsFlutter? _pusher;
   static PusherChannel? _chatChannel;
   static HttpService? _httpService;
-  
-  // Callbacks para eventos de chat
+
+  // Generic message callbacks (legacy)
   static Function(String message, String sender, String timestamp)? onMessageReceived;
   static Function(String user, String action)? onUserJoined;
   static Function(String user, String action)? onUserLeft;
-  
-  // Callbacks específicos para chat
+
+  // Chat-specific callbacks
   static Function(ChatMessage message)? onChatMessageReceived;
   static Function(String chatId, String eventType, dynamic data)? onChatEvent;
-  
-  // Lista de mensagens em memória
+  static Function(int chatId, int userId, bool isTyping)? onTypingReceived;
+
   static final List<ChatMessage> _messages = [];
-  
   static List<ChatMessage> get messages => List.unmodifiable(_messages);
-  
-  // Map para armazenar canais de chat ativos
+
+  // Active per-chat channels (for typing indicators)
   static final Map<String, PusherChannel> _chatChannels = {};
+
+  // Personal channel — receives all MessageSent events across all chats
+  static PusherChannel? _personalChannel;
+  static String? _personalChannelName;
 
   static Future<void> initialize({HttpService? httpService}) async {
     try {
       print('🟡 Pusher - Iniciando inicialização...');
-      print('🟡 Pusher - AppKey: ${PusherConfig.clientAppKey}');
-      print('🟡 Pusher - Cluster: ${PusherConfig.clientCluster}');
-      print('🟡 Pusher - Host: ${PusherConfig.clientHost}');
-      print('🟡 Pusher - Port: ${PusherConfig.clientPort}');
-      print('🟡 Pusher - Scheme: ${PusherConfig.clientScheme}');
-      
+
       _pusher = PusherChannelsFlutter.getInstance();
       _httpService = httpService ?? HttpService(
         baseUrl: ApiConfig.baseUrl,
         tokenService: getIt<TokenService>(),
       );
-      
+
       await _pusher!.init(
         apiKey: PusherConfig.clientAppKey,
         cluster: PusherConfig.clientCluster,
+        authEndpoint: '${ApiConfig.baseUrl}/broadcasting/auth',
+        onAuthorizer: (channelName, socketId, options) async {
+          try {
+            final token = await getIt<TokenService>().getToken();
+            final response = await _httpService!.post(
+              '/broadcasting/auth',
+              {'socket_id': socketId, 'channel_name': channelName},
+              headers: {'Authorization': 'Bearer ${token ?? ''}'},
+            );
+            // pusher_channels_flutter expects a Map or JSON string
+            if (response is Map) return response;
+            return <String, dynamic>{};
+          } catch (e) {
+            print('🔴 Pusher - Auth error for $channelName: $e');
+            return <String, dynamic>{};
+          }
+        },
         onConnectionStateChange: (previousCurrent, current) {
           print('🟢 Pusher - Estado da conexão: $previousCurrent -> $current');
         },
         onError: (error, code, e) {
           print('🔴 Pusher - Erro: $error (código: $code)');
-          print('🔴 Pusher - Detalhes do erro: $e');
         },
         onSubscriptionSucceeded: (channelName, data) {
           print('🟢 Pusher - Canal inscrito: $channelName');
-          print('🟢 Pusher - Dados da inscrição: $data');
-          print('🟢 Pusher - Verificando se é um canal de chat...');
-          
-          // Verificar se é um canal de chat
-          if (channelName.startsWith('chat.')) {
-            final chatId = channelName.replaceFirst('chat.', '');
-            print('🟢 Pusher - Canal de chat detectado: $channelName (ID: $chatId)');
-            
-            // Verificar se já está na lista de canais
-            if (_chatChannels.containsKey(channelName)) {
-              print('🟢 Pusher - Canal já está na lista de canais ativos');
-            } else {
-              print('🟡 Pusher - Canal não está na lista de canais ativos - pode ser um problema');
-            }
-          } else {
-            print('🟡 Pusher - Canal não é de chat: $channelName');
-          }
         },
         onSubscriptionError: (channelName, error) {
           print('🔴 Pusher - Erro na inscrição do canal: $channelName - $error');
         },
         onEvent: (event) {
-          print('🟡 Pusher - Evento recebido: ${event.eventName} em ${event.channelName}');
-          print('🟡 Pusher - Dados do evento: ${event.data}');
+          print('🟡 Pusher - Evento: ${event.eventName} em ${event.channelName}');
           _handleEvent(event);
         },
       );
 
-      print('🟡 Pusher - Tentando conectar...');
+      print('🟡 Pusher - Conectando...');
       await _pusher!.connect();
-      print('🟢 Pusher - Conectado com sucesso');
-      
+      print('🟢 Pusher - Conectado');
     } catch (e) {
       print('🔴 Pusher - Erro na inicialização: $e');
-      print('🔴 Pusher - Stack trace: ${StackTrace.current}');
       rethrow;
     }
   }
 
-  static Future<void> subscribeToChatChannel(String channelName) async {
-    try {
-      print("subscribing to chat channel222");
-      if (_pusher == null) {
-        await initialize();
-      }
-      
-      _chatChannel = await _pusher!.subscribe(
-        channelName: channelName,
-        onEvent: (event) {
-          print('🟡 Pusher - Evento do canal de chat: ${event.eventName}');
-          _handleChatEvent(event);
-        },
-      );
-      
-      print('🟢 Pusher - Inscrito no canal de chat: $channelName');
-      
-    } catch (e) {
-      print('🔴 Pusher - Erro ao se inscrever no canal: $e');
-      rethrow;
+  // ── Personal channel ──────────────────────────────────────────────────────
+
+  /// Subscribe to personal channel e.g. "private-user.user.42"
+  /// Receives MessageSent events from ALL chats the user participates in.
+  static Future<void> subscribeToPersonalChannel(String channelName) async {
+    if (_pusher == null) await initialize();
+    if (_personalChannelName == channelName) return;
+
+    // Unsubscribe from previous personal channel if any
+    if (_personalChannelName != null && _personalChannelName != channelName) {
+      await unsubscribeFromPersonalChannel();
+    }
+
+    print('🟡 Pusher - Subscribing to personal channel: $channelName');
+    _personalChannelName = channelName;
+
+    _personalChannel = await _pusher!.subscribe(
+      channelName: channelName,
+      onEvent: (event) {
+        print('🟡 Pusher - Personal channel event: ${event.eventName}');
+        if (event.eventName == 'MessageSent') {
+          final msg = _parseMessageEvent(event);
+          if (msg != null) {
+            onChatMessageReceived?.call(msg);
+            onChatEvent?.call(msg.chatId.toString(), 'MessageSent', event.data);
+          }
+        }
+      },
+    );
+
+    print('🟢 Pusher - Personal channel subscribed: $channelName');
+  }
+
+  static Future<void> unsubscribeFromPersonalChannel() async {
+    if (_personalChannelName != null && _pusher != null) {
+      await _pusher!.unsubscribe(channelName: _personalChannelName!);
+      _personalChannel = null;
+      _personalChannelName = null;
+      print('🟢 Pusher - Personal channel unsubscribed');
     }
   }
 
-  /// Inscreve em um canal de chat específico usando o formato chat.{chatId}
+  // ── Per-chat private channel (typing indicators) ─────────────────────────
+
+  /// Subscribe to private-chat.{chatId} for typing indicators only.
   static Future<void> subscribeToChat(int chatId) async {
-    try {
-      print('🟡 Pusher - Tentando inscrever no chat $chatId...');
-      print('🟡 Pusher - Estado atual do Pusher: ${_pusher?.connectionState}');
-      print('🟡 Pusher - Pusher inicializado: ${_pusher != null}');
-      print('🟡 Pusher - Canais ativos antes: ${_chatChannels.keys.toList()}');
-      
-      if (_pusher == null) {
-        print('🟡 Pusher - Pusher não inicializado, inicializando...');
-        await initialize();
-      }
-      
-      final channelName = 'chat.$chatId';
-      print('🟡 Pusher - Nome do canal: $channelName');
-      print('🟡 Pusher - Formato esperado: chat.{chatId}');
-      print('🟡 Pusher - Chat ID fornecido: $chatId (tipo: ${chatId.runtimeType})');
-      
-      // Verificar se já está inscrito neste canal
-      if (_chatChannels.containsKey(channelName)) {
-        print('🟡 Pusher - Já inscrito no canal: $channelName');
-        return;
-      }
-      
-      print('🟢 Pusher - Inscrevendo no canal: $channelName');
-      print('🟡 Pusher - Estado do Pusher: ${_pusher?.connectionState}');
-      print('🟡 Pusher - Tentando subscribe...');
-      
-      final channel = await _pusher!.subscribe(
-        channelName: channelName,
-        onEvent: (event) {
-          print('🟡 Pusher - Evento do canal $channelName: ${event.eventName}');
-          print('🟡 Pusher - Dados do evento: ${event.data}');
-          _handleChatEventWithId(event, chatId);
-        },
-      );
-      
-      print('🟢 Pusher - Canal retornado pelo subscribe: ${channel.channelName}');
-      _chatChannels[channelName] = channel;
-      print('🟢 Pusher - Inscrito com sucesso no canal: $channelName');
-      print('🟢 Pusher - Total de canais ativos: ${_chatChannels.length}');
-      print('🟢 Pusher - Canais ativos depois: ${_chatChannels.keys.toList()}');
-      
-    } catch (e) {
-      print('🔴 Pusher - Erro ao se inscrever no canal chat.$chatId: $e');
-      print('🔴 Pusher - Stack trace: ${StackTrace.current}');
-      rethrow;
-    }
+    if (_pusher == null) await initialize();
+
+    final channelName = 'private-chat.$chatId';
+    if (_chatChannels.containsKey(channelName)) return;
+
+    print('🟡 Pusher - Subscribing to chat channel: $channelName');
+
+    final channel = await _pusher!.subscribe(
+      channelName: channelName,
+      onEvent: (event) {
+        print('🟡 Pusher - Chat channel event: ${event.eventName} on $channelName');
+        _handleChatEventWithId(event, chatId);
+      },
+    );
+
+    _chatChannels[channelName] = channel;
+    print('🟢 Pusher - Chat channel subscribed: $channelName');
   }
 
-  /// Remove inscrição de um canal de chat específico
   static Future<void> unsubscribeFromChat(int chatId) async {
-    try {
-      final channelName = 'chat.$chatId';
-      
-      if (_chatChannels.containsKey(channelName)) {
-        final channel = _chatChannels[channelName]!;
-        await _pusher!.unsubscribe(channelName: channelName);
-        _chatChannels.remove(channelName);
-        print('🟢 Pusher - Removida inscrição do canal: $channelName');
-      }
-    } catch (e) {
-      print('🔴 Pusher - Erro ao remover inscrição do canal chat.$chatId: $e');
+    final channelName = 'private-chat.$chatId';
+    if (_chatChannels.containsKey(channelName)) {
+      await _pusher!.unsubscribe(channelName: channelName);
+      _chatChannels.remove(channelName);
+      print('🟢 Pusher - Unsubscribed from: $channelName');
     }
   }
 
-  /// Remove inscrição de todos os canais de chat
   static Future<void> unsubscribeFromAllChats() async {
-    try {
-      for (final channelName in _chatChannels.keys.toList()) {
-        await _pusher!.unsubscribe(channelName: channelName);
-        print('🟢 Pusher - Removida inscrição do canal: $channelName');
-      }
-      _chatChannels.clear();
-    } catch (e) {
-      print('🔴 Pusher - Erro ao remover inscrições: $e');
+    for (final channelName in _chatChannels.keys.toList()) {
+      await _pusher!.unsubscribe(channelName: channelName);
+      print('🟢 Pusher - Unsubscribed from: $channelName');
     }
+    _chatChannels.clear();
   }
 
-  static Future<void> sendMessage(String channelName, String message, String sender) async {
+  // ── Typing indicators via client events ──────────────────────────────────
+
+  static Future<void> triggerTyping(int chatId, int userId, bool isTyping) async {
+    final channelName = 'private-chat.$chatId';
+    if (!_chatChannels.containsKey(channelName) || _pusher == null) return;
+
+    final eventName = isTyping ? 'client-typing' : 'client-stop-typing';
     try {
-      if (_httpService == null) {
-        throw Exception('Serviço HTTP não inicializado');
-      }
-      
-      // Enviar mensagem via API Laravel
-      final response = await _httpService!.post(
-        '/chat/send',
-        {
-          'message': message,
-          'sender': sender,
-          'channel': channelName,
-        },
-      );
-      
-      print('🟢 Pusher - Mensagem enviada via API: $message');
-      print('   Response: $response');
-      
-      // A mensagem será recebida via WebSocket do Pusher
-      // e processada pelo callback onMessageReceived
-      
-    } catch (e) {
-      print('🔴 Pusher - Erro ao enviar mensagem: $e');
-      
-      // Fallback: simular mensagem localmente se a API falhar
-      _handleChatMessage(PusherEvent(
+      await _pusher!.trigger(PusherEvent(
         channelName: channelName,
-        eventName: 'chat-message',
-        data: jsonEncode({
-          'message': message,
-          'sender': sender,
-          'timestamp': DateTime.now().toIso8601String(),
-        }),
-        userId: sender,
+        eventName: eventName,
+        data: jsonEncode({'user_id': userId, 'chat_id': chatId}),
       ));
+    } catch (e) {
+      print('🔴 Pusher - Typing trigger error: $e');
     }
   }
 
-  static Future<void> joinChannel(String channelName, String user) async {
-    try {
-      if (_httpService == null) {
-        throw Exception('Serviço HTTP não inicializado');
-      }
-      
-      await _httpService!.post(
-        '/chat/join',
-        {
-          'user': user,
-          'channel': channelName,
-        },
-      );
-      
-      print('🟢 Pusher - Usuário entrou no canal: $user');
-      
-    } catch (e) {
-      print('🔴 Pusher - Erro ao entrar no canal: $e');
-    }
-  }
-
-  static Future<void> leaveChannel(String channelName, String user) async {
-    try {
-      if (_httpService == null) {
-        throw Exception('Serviço HTTP não inicializado');
-      }
-      
-      await _httpService!.post(
-        '/chat/leave',
-        {
-          'user': user,
-          'channel': channelName,
-        },
-      );
-      
-      print('🟢 Pusher - Usuário saiu do canal: $user');
-      
-    } catch (e) {
-      print('🔴 Pusher - Erro ao sair do canal: $e');
-    }
-  }
+  // ── Event handlers ────────────────────────────────────────────────────────
 
   static void _handleEvent(PusherEvent event) {
-    // Eventos gerais do Pusher
-    print('🟡 Pusher - Evento geral: ${event.eventName}');
+    // General Pusher events — currently handled per-channel via onEvent callbacks
   }
 
-  static void _handleChatEvent(PusherEvent event) {
+  static void _handleChatEventWithId(PusherEvent event, int chatId) {
     try {
-      print('🟡 Pusher - Processando evento de chat: ${event.eventName}');
-        print('aqui');
-      
+      // Per-chat channel is used ONLY for typing indicators (client events).
+      // MessageSent events arrive here too (backend broadcasts on both personal
+      // and per-chat channels) but we skip them — the personal channel handles
+      // all MessageSent delivery to avoid duplicate processing.
       switch (event.eventName) {
-        case 'chat-message':
-          _handleChatMessage(event);
+        case 'client-typing':
+          final data = event.data is String ? jsonDecode(event.data as String) : event.data;
+          final userId = (data as Map)['user_id'];
+          if (userId != null) onTypingReceived?.call(chatId, userId as int, true);
           break;
-        case 'user-joined':
-          _handleUserJoined(event);
-          break;
-        case 'user-left':
-          _handleUserLeft(event);
-          break;
-        case 'message-sent':
-          _handleMessageSent(event);
-          break;
-        case 'message-read':
-          _handleMessageRead(event);
+        case 'client-stop-typing':
+          final data = event.data is String ? jsonDecode(event.data as String) : event.data;
+          final userId = (data as Map)['user_id'];
+          if (userId != null) onTypingReceived?.call(chatId, userId as int, false);
           break;
         default:
-          print('🟡 Pusher - Evento de chat não tratado: ${event.eventName}');
+          // Silently ignore other events on per-chat channel (incl. MessageSent duplicate)
+          break;
       }
     } catch (e) {
-      print('🔴 Pusher - Erro ao processar evento de chat: $e');
+      print('🔴 Pusher - Error handling event ${event.eventName}: $e');
     }
   }
 
-  /// Versão sobrecarregada para eventos de chat específicos
-  static void _handleChatEventWithId(PusherEvent event, int chatId) {
-    try {
-      print('🟡 Pusher - Processando evento de chat ID: $chatId: ${event.eventName}');
-      
-      // Notificar listeners específicos de chat
-      onChatEvent?.call(chatId.toString(), event.eventName, event.data);
-      
-      switch (event.eventName) {
-        case 'chat-message':
-          _handleChatMessage(event);
-          break;
-        case 'user-joined':
-          _handleUserJoined(event);
-          break;
-        case 'user-left':
-          _handleUserLeft(event);
-          break;
-        case 'message-sent':
-          _handleMessageSent(event, chatId: chatId);
-          break;
-        case 'message-read':
-          _handleMessageRead(event, chatId: chatId);
-          break;
-        default:
-          print('🟡 Pusher - Evento de chat não tratado: ${event.eventName}');
-      }
-    } catch (e) {
-      print('🔴 Pusher - Erro ao processar evento de chat: $e');
+  // ── Legacy event handlers (kept for backward compat) ─────────────────────
+
+  static void _handleChatEvent(PusherEvent event) {
+    switch (event.eventName) {
+      case 'MessageSent':
+        _handleMessageSentLegacy(event);
+        break;
+      case 'chat-message':
+        _handleChatMessage(event);
+        break;
+      case 'user-joined':
+        _handleUserJoined(event);
+        break;
+      case 'user-left':
+        _handleUserLeft(event);
+        break;
+      default:
+        print('🟡 Pusher - Unhandled chat event: ${event.eventName}');
     }
   }
 
   static void _handleChatMessage(PusherEvent event) {
     try {
-      final data = jsonDecode(event.data);
+      final data = jsonDecode(event.data as String);
       final message = ChatMessage(
         message: data['message'] ?? '',
         sender: data['sender'] ?? 'Unknown',
         timestamp: data['timestamp'] ?? DateTime.now().toIso8601String(),
       );
-      
       _messages.add(message);
-      
-      // Notificar listeners
-      onMessageReceived?.call(
-        message.message,
-        message.sender,
-        message.timestamp,
-      );
-      
-      print('🟢 Pusher - Mensagem processada: ${message.message} de ${message.sender}');
-      
+      onMessageReceived?.call(message.message, message.sender, message.timestamp);
     } catch (e) {
-      print('🔴 Pusher - Erro ao processar mensagem: $e');
+      print('🔴 Pusher - Error handling chat message: $e');
     }
   }
 
   static void _handleUserJoined(PusherEvent event) {
     try {
-      final data = jsonDecode(event.data);
-      final user = data['user'] ?? 'Unknown';
-      
-      onUserJoined?.call(user, 'joined');
-      print('🟢 Pusher - Usuário entrou: $user');
-      
+      final data = jsonDecode(event.data as String);
+      onUserJoined?.call(data['user'] ?? 'Unknown', 'joined');
     } catch (e) {
-      print('🔴 Pusher - Erro ao processar usuário entrou: $e');
+      print('🔴 Pusher - Error handling user joined: $e');
     }
   }
 
   static void _handleUserLeft(PusherEvent event) {
     try {
-      final data = jsonDecode(event.data);
-      final user = data['user'] ?? 'Unknown';
-      
-      onUserLeft?.call(user, 'left');
-      print('🟢 Pusher - Usuário saiu: $user');
-      
+      final data = jsonDecode(event.data as String);
+      onUserLeft?.call(data['user'] ?? 'Unknown', 'left');
     } catch (e) {
-      print('🔴 Pusher - Erro ao processar usuário saiu: $e');
+      print('🔴 Pusher - Error handling user left: $e');
     }
   }
 
-  static void _handleMessageSent(PusherEvent event, {int? chatId}) {
-    try {
-      final data = jsonDecode(event.data);
-      final message = data['message'] ?? '';
-      final sender = data['sender'] ?? 'Unknown';
-      final timestamp = data['timestamp'] ?? DateTime.now().toIso8601String();
-      
-      print('🟢 Pusher - Mensagem enviada: $message de $sender ${chatId != null ? 'no chat $chatId' : ''}');
-      
-      // Notificar listeners específicos de chat
-      if (chatId != null) {
-        // Passar os dados brutos (String JSON) para o callback
-        onChatEvent?.call(chatId.toString(), 'message-sent', event.data);
-      }
-      
-    } catch (e) {
-      print('🔴 Pusher - Erro ao processar mensagem enviada: $e');
+  static void _handleMessageSentLegacy(PusherEvent event, {int? chatId}) {
+    if (chatId != null) {
+      onChatEvent?.call(chatId.toString(), 'MessageSent', event.data);
     }
   }
 
-  static void _handleMessageRead(PusherEvent event, {int? chatId}) {
-    try {
-      final data = jsonDecode(event.data);
-      final messageId = data['message_id'] ?? '';
-      final reader = data['reader'] ?? 'Unknown';
-      final timestamp = data['timestamp'] ?? DateTime.now().toIso8601String();
-      
-      print('🟢 Pusher - Mensagem lida: ID $messageId por $reader ${chatId != null ? 'no chat $chatId' : ''}');
-      
-      // Notificar listeners específicos de chat
-      if (chatId != null) {
-        // Passar os dados brutos (String JSON) para o callback
-        onChatEvent?.call(chatId.toString(), 'message-read', event.data);
-      }
-      
-    } catch (e) {
-      print('🔴 Pusher - Erro ao processar mensagem lida: $e');
-    }
-  }
+  // ── Message parsing ───────────────────────────────────────────────────────
 
-  /// Método de teste para verificar a conexão
-  static Future<void> testConnection() async {
+  static ChatMessage? _parseMessageEvent(PusherEvent event) {
     try {
-      print('🧪 Pusher - Testando conexão...');
-      
-      if (_pusher == null) {
-        print('🧪 Pusher - Pusher não inicializado, inicializando...');
-        await initialize();
+      Map<String, dynamic> data;
+      if (event.data is String) {
+        data = Map<String, dynamic>.from(jsonDecode(event.data as String));
+      } else if (event.data is Map) {
+        data = Map<String, dynamic>.from(event.data as Map);
+      } else {
+        return null;
       }
-      
-      print('🧪 Pusher - Estado da conexão: ${_pusher?.connectionState}');
-      print('🧪 Pusher - Tentando inscrever em canal de teste...');
-      
-      // Tentar inscrever em um canal de teste
-      print('🧪 Pusher - Chamando subscribe para test-channel...');
-      final testChannel = await _pusher!.subscribe(
-        channelName: 'test-channel',
-        onEvent: (event) {
-          print('🧪 Pusher - Evento de teste recebido: ${event.eventName}');
-        },
+
+      final id = _toInt(data['id']) ?? DateTime.now().millisecondsSinceEpoch;
+      final chatId = _toInt(data['chat_id']) ?? 0;
+      final content = data['content'] as String? ?? '';
+      final senderId = _toInt(data['sender_id']) ?? 0;
+      final senderType = data['sender_type'] as String? ?? 'user';
+      final isRead = data['is_read'] == true;
+      final createdAtRaw = data['created_at'] as String?;
+      DateTime createdAt;
+      try {
+        createdAt = createdAtRaw != null
+            ? DateTime.parse(createdAtRaw.replaceAll(' ', 'T'))
+            : DateTime.now();
+      } catch (_) {
+        createdAt = DateTime.now();
+      }
+
+      return ChatMessage(
+        id: id,
+        chatId: chatId,
+        content: content,
+        senderId: senderId,
+        senderType: senderType,
+        isRead: isRead,
+        createdAt: createdAt,
       );
-      
-      print('🧪 Pusher - Canal de teste inscrito com sucesso: ${testChannel.channelName}');
-      print('🧪 Pusher - Aguardando 2 segundos...');
-      
-      // Aguardar um pouco e depois desinscrever
-      await Future.delayed(Duration(seconds: 2));
-      print('🧪 Pusher - Desinscrevendo do canal de teste...');
-      await _pusher!.unsubscribe(channelName: 'test-channel');
-      print('🧪 Pusher - Teste concluído com sucesso');
-      
     } catch (e) {
-      print('🔴 Pusher - Erro no teste de conexão: $e');
-      print('🔴 Pusher - Stack trace: ${StackTrace.current}');
+      print('🔴 Pusher - Error parsing message event: $e');
+      return null;
     }
   }
 
-  /// Método de teste para verificar inscrição em canais de chat
+  static int? _toInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+  static Future<void> subscribeToChatChannel(String channelName) async {
+    if (_pusher == null) await initialize();
+    _chatChannel = await _pusher!.subscribe(
+      channelName: channelName,
+      onEvent: (event) => _handleChatEvent(event),
+    );
+    print('🟢 Pusher - Subscribed to: $channelName');
+  }
+
   static Future<void> testChatChannelSubscription(int chatId) async {
-    try {
-      print('🧪 Pusher - Testando inscrição em canal de chat: $chatId');
-      
-      if (_pusher == null) {
-        print('🧪 Pusher - Pusher não inicializado, inicializando...');
-        await initialize();
-      }
-      
-      print('🧪 Pusher - Estado da conexão: ${_pusher?.connectionState}');
-      print('🧪 Pusher - Canais ativos antes: ${_chatChannels.keys.toList()}');
-      
-      // Tentar inscrever no canal de chat
-      await subscribeToChat(chatId);
-      
-      print('🧪 Pusher - Teste de inscrição em canal de chat concluído');
-      print('🧪 Pusher - Canais ativos depois: ${_chatChannels.keys.toList()}');
-      
-    } catch (e) {
-      print('🔴 Pusher - Erro no teste de canal de chat: $e');
-    }
+    if (_pusher == null) await initialize();
+    await subscribeToChat(chatId);
+    print('🧪 Pusher - Test subscription to chat $chatId complete');
   }
 
   static Future<void> disconnect() async {
-    try {
-      // Desinscrever de todos os canais de chat
-      await unsubscribeFromAllChats();
-      
-      if (_chatChannel != null) {
-        await _pusher!.unsubscribe(channelName: _chatChannel!.channelName);
-        _chatChannel = null;
-      }
-      
-      if (_pusher != null) {
-        await _pusher!.disconnect();
-        _pusher = null;
-      }
-      
-      _messages.clear();
-      print('🟢 Pusher - Desconectado com sucesso');
-      
-    } catch (e) {
-      print('🔴 Pusher - Erro ao desconectar: $e');
+    await unsubscribeFromPersonalChannel();
+    await unsubscribeFromAllChats();
+    if (_chatChannel != null) {
+      await _pusher!.unsubscribe(channelName: _chatChannel!.channelName);
+      _chatChannel = null;
     }
-  }
-
-  static void clearMessages() {
+    if (_pusher != null) {
+      await _pusher!.disconnect();
+      _pusher = null;
+    }
     _messages.clear();
+    print('🟢 Pusher - Disconnected');
   }
 
-  /// Verifica se o Pusher está funcionando
+  static void clearMessages() => _messages.clear();
+
   static bool get isConnected => _pusher?.connectionState == 'CONNECTED';
-  
-  /// Verifica se o Pusher está inicializado
   static bool get isInitialized => _pusher != null;
-  
-  /// Obtém o estado atual da conexão
   static String? get connectionState => _pusher?.connectionState;
-  
-  /// Obtém a lista de canais ativos
   static List<String> get activeChannels => _chatChannels.keys.toList();
+  static String? get personalChannel => _personalChannelName;
 }
 
+// ── Legacy ChatMessage for PusherService internal use ────────────────────────
+
 class ChatMessage {
+  final dynamic id;
+  final dynamic chatId;
+  final String content;
+  final dynamic senderId;
+  final String senderType;
+  final bool isRead;
+  final DateTime createdAt;
+
+  // Legacy fields
   final String message;
   final String sender;
   final String timestamp;
 
   ChatMessage({
-    required this.message,
-    required this.sender,
-    required this.timestamp,
-  });
+    dynamic id,
+    dynamic chatId,
+    String? content,
+    dynamic senderId,
+    String? senderType,
+    bool? isRead,
+    DateTime? createdAt,
+    // Legacy
+    String? message,
+    String? sender,
+    String? timestamp,
+  })  : id = id ?? 0,
+        chatId = chatId ?? 0,
+        content = content ?? message ?? '',
+        senderId = senderId ?? 0,
+        senderType = senderType ?? 'user',
+        isRead = isRead ?? false,
+        createdAt = createdAt ?? DateTime.now(),
+        message = message ?? content ?? '',
+        sender = sender ?? '',
+        timestamp = timestamp ?? (createdAt ?? DateTime.now()).toIso8601String();
 
-  DateTime get dateTime => DateTime.parse(timestamp);
+  DateTime get dateTime => createdAt;
 
   @override
-  String toString() {
-    return 'ChatMessage(message: $message, sender: $sender, timestamp: $timestamp)';
-  }
-} 
+  String toString() => 'ChatMessage(id: $id, chatId: $chatId, content: $content)';
+}

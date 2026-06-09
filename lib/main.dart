@@ -9,18 +9,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await configureDependencies();
   
-  // Inicializar PusherService
+  // Inicializar PusherService (personal channel subscribed after login in AuthBloc)
   try {
     await PusherService.initialize();
     print('🟢 Main - PusherService inicializado com sucesso');
-    
-    // Testar conexão
-    // await PusherService.testConnection();
-    
-    // Testar inscrição em canal de chat específico
-    print('🧪 Main - Testando inscrição em canal chat.12');
-    await PusherService.testChatChannelSubscription(12);
-    
   } catch (e) {
     print('🔴 Main - Erro ao inicializar PusherService: $e');
   }

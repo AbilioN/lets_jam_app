@@ -4,6 +4,7 @@ import '../../domain/entities/user.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
 import '../../domain/usecases/verify_email_usecase.dart';
+import '../../../../core/services/pusher_service.dart' as pusher_service;
 
 part 'auth_event.dart';
 part 'auth_state.dart';
@@ -50,12 +51,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           print('🔴 AuthBloc - Falha no login: ${failure.message}');
           emit(AuthError(failure.message));
         },
-        (user) {
+        (user) async {
           print('🟢 AuthBloc - Login bem-sucedido:');
           print('   User ID: ${user.id}');
           print('   User Name: ${user.name}');
           print('   User Email: ${user.email}');
           emit(AuthAuthenticated(user));
+
+          // Subscribe to personal channel for all-chat real-time events
+          if (user.channel != null) {
+            final personalChannel = 'private-${user.channel}';
+            try {
+              await pusher_service.PusherService.subscribeToPersonalChannel(personalChannel);
+            } catch (e) {
+              print('🔴 AuthBloc - Failed to subscribe to personal channel: $e');
+            }
+          }
         },
       );
     } catch (e) {
@@ -149,7 +160,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
-    // Implement logout logic here
+    await pusher_service.PusherService.unsubscribeFromPersonalChannel();
+    await pusher_service.PusherService.unsubscribeFromAllChats();
     emit(AuthUnauthenticated());
   }
 } 

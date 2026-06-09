@@ -119,4 +119,22 @@ class CreateGroupChat extends ChatEvent {
   List<Object> get props => [name, description, participants];
 }
 
-class ChatDisconnected extends ChatEvent {} 
+class ChatDisconnected extends ChatEvent {}
+
+class StartTyping extends ChatEvent {
+  final int chatId;
+
+  const StartTyping({required this.chatId});
+
+  @override
+  List<Object> get props => [chatId];
+}
+
+class StopTyping extends ChatEvent {
+  final int chatId;
+
+  const StopTyping({required this.chatId});
+
+  @override
+  List<Object> get props => [chatId];
+} 
