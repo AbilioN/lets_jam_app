@@ -54,9 +54,8 @@ dependencies:
   equatable: ^2.0.5
   dartz: ^0.10.1
   
-  # Real-time Communication — patched local copy: DispatchQueue.main.async fix for iOS onAuthorizer
-  pusher_channels_flutter:
-    path: packages/pusher_channels_flutter
+  # Real-time Communication
+  pusher_channels_flutter: ^2.0.3
   
   # Code Generation
   json_annotation: ^4.8.1

@@ -44,7 +44,6 @@ class PusherService {
       await _pusher!.init(
         apiKey: PusherConfig.clientAppKey,
         cluster: PusherConfig.clientCluster,
-        authEndpoint: '${ApiConfig.baseUrl}/broadcasting/auth',
         onAuthorizer: (channelName, socketId, options) async {
           try {
             final token = await getIt<TokenService>().getToken();

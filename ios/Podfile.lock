@@ -1,19 +1,19 @@
 PODS:
   - Flutter (1.0.0)
-  - NWWebSocket (0.5.7)
+  - NWWebSocket (0.5.10)
   - pusher_channels_flutter (0.0.1):
     - Flutter
-    - PusherSwift (~> 10.1.5)
-  - PusherSwift (10.1.6):
-    - NWWebSocket (~> 0.5.7)
-    - TweetNacl (~> 1.0.0)
+    - PusherSwift (~> 10.1.9)
+  - PusherSwift (10.1.10):
+    - NWWebSocket (~> 0.5.10)
+    - PusherTweetNacl (~> 1.2.0)
+  - PusherTweetNacl (1.2.0)
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
   - sqflite_darwin (0.0.4):
     - Flutter
     - FlutterMacOS
-  - TweetNacl (1.0.2)
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
@@ -25,7 +25,7 @@ SPEC REPOS:
   trunk:
     - NWWebSocket
     - PusherSwift
-    - TweetNacl
+    - PusherTweetNacl
 
 EXTERNAL SOURCES:
   Flutter:
@@ -39,12 +39,12 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  NWWebSocket: b4741420f1976e1dff4da3edad00c401e4f1d769
-  pusher_channels_flutter: 19ee24691d26965e9efca571f1620f536b9882bf
-  PusherSwift: fa3d5f6587c20ad5790de87a5c9b150367b5f0f5
+  NWWebSocket: 873eb4b18acd0317da70cdba388d792a3187ce00
+  pusher_channels_flutter: 2723222f2686852dd91d13780938d11cca114a39
+  PusherSwift: 6022fe6584b4317dc5c177091292b2a4d80a8c35
+  PusherTweetNacl: 015f56f2cf010e718703f2bd9bca66fdcc91b208
   shared_preferences_foundation: 9e1978ff2562383bd5676f64ec4e9aa8fa06a6f7
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
-  TweetNacl: 3abf4d1d2082b0114e7a67410e300892448951e6
 
 PODFILE CHECKSUM: f79e1872da79a29354b04cf03619f8f3d69fe58e
 
