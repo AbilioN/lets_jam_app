@@ -153,12 +153,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     Emitter<ChatState> emit,
   ) async {
     if (state is ChatConnected) {
-      final currentState = state as ChatConnected;
-      
       try {
-        // NÃO emitir ChatLoading - manter o estado atual
-        // emit(ChatLoading()); // ← REMOVIDO
-        
         if (event.chatId != null) {
           // Enviar mensagem real via API
           final httpService = getIt<http_service.HttpService>();
@@ -172,29 +167,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           
           print('🟢 ChatBloc - Mensagem enviada via API: ${event.content}');
           print('🟢 ChatBloc - Response: $response');
-
-          // API returns {status: queued} — no full message payload.
-          // Build an optimistic message from known data so it appears immediately.
-          final authState = getIt<auth_bloc.AuthBloc>().state;
-          final senderId = authState is auth_bloc.AuthAuthenticated
-              ? authState.user.id
-              : '';
-
-          final optimisticMsg = chat_service.ChatMessage(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            chatId: event.chatId!,
-            content: event.content,
-            senderId: senderId,
-            senderType: 'user',
-            isRead: false,
-            createdAt: DateTime.now(),
-          );
-          final updated = List<chat_service.ChatMessage>.from(currentState.messages)..add(optimisticMsg);
-          emit(ChatConnected(
-            chatId: currentState.chatId,
-            messages: updated,
-            chats: currentState.chats,
-          ));
+          // Message is queued — Pusher will deliver it via MessageReceived.
+          // Do NOT emit optimistically; that causes duplicates when the event arrives.
           
         } else {
           // Enviar mensagem para usuário (cria/usa chat privado)
