@@ -1,5 +1,5 @@
 class ChatModel {
-  final int id;
+  final String id;
   final String name;
   final String type;
   final String description;
@@ -23,7 +23,7 @@ class ChatModel {
 
   factory ChatModel.fromJson(Map<String, dynamic> json) {
     return ChatModel(
-      id: _toInt(json['id']),
+      id: (json['id'] ?? '').toString(),
       name: json['name'] as String? ?? '',
       type: json['type'] as String? ?? 'private',
       description: json['description'] as String? ?? '',

@@ -13,7 +13,7 @@ void main() {
   late MockChatsRepository mockRepository;
 
   setUpAll(() {
-    registerFallbackValue(1);
+    registerFallbackValue('');
     registerFallbackValue(50);
   });
 
@@ -22,16 +22,16 @@ void main() {
     useCase = GetChatMessagesUseCase(mockRepository);
   });
 
-  const tChatId = 12;
+  const tChatId = '550e8400-e29b-41d4-a716-446655440000';
   const tPage = 1;
   const tPerPage = 50;
 
   final tMessages = [
     MessageModel(
-      id: 1,
-      chatId: 12,
+      id: '1a2b3c4d-e5f6-7890-abcd-ef1234567890',
+      chatId: '550e8400-e29b-41d4-a716-446655440000',
       content: 'mensagem',
-      senderId: 2,
+      senderId: '2b3c4d5e-f6a7-8901-bcde-f12345678901',
       senderType: 'user',
       messageType: 'text',
       metadata: null,

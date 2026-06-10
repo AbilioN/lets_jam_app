@@ -5,7 +5,7 @@ import '../../data/models/message_model.dart';
 import '../repositories/chats_repository.dart';
 
 class GetChatMessagesParams {
-  final int chatId;
+  final String chatId;
   final int page;
   final int perPage;
 

@@ -4,7 +4,7 @@ import '../bloc/chat_bloc.dart';
 import '../widgets/chat_widget.dart';
 
 class ChatPage extends StatelessWidget {
-  final int? chatId;
+  final String? chatId;
   final int? otherUserId;
   final String? otherUserType;
   final String? chatName;

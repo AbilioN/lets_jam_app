@@ -10,7 +10,7 @@ abstract class ChatsEvent extends Equatable {
 class LoadChats extends ChatsEvent {}
 
 class LoadChatMessages extends ChatsEvent {
-  final int chatId;
+  final String chatId;
   final int page;
   final int perPage;
 

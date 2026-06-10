@@ -5,7 +5,7 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/services/chat_service.dart' as chat_service;
 
 class ChatWidget extends StatefulWidget {
-  final int? chatId;
+  final String? chatId;
   final int? otherUserId;
   final String? otherUserType;
   final String? chatName;
@@ -90,10 +90,10 @@ class _ChatWidgetState extends State<ChatWidget> {
       // Alternativa: disparar um evento de teste
       chatBloc.add(MessageReceived(
         message: chat_service.ChatMessage(
-          id: DateTime.now().millisecondsSinceEpoch,
-          chatId: widget.chatId ?? 0,
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          chatId: widget.chatId ?? '',
           content: testData['message'] as String,
-          senderId: testData['sender_id'] as int,
+          senderId: (testData['sender_id'] as int).toString(),
           senderType: testData['sender_type'] as String,
           isRead: false,
           createdAt: DateTime.parse(testData['created_at'] as String),
@@ -291,7 +291,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                           builder: (context) {
                             final authState = context.read<AuthBloc>().state;
                             final currentUserId = authState is AuthAuthenticated
-                                ? int.tryParse(authState.user.id)
+                                ? authState.user.id
                                 : null;
 
                             return ListView.builder(

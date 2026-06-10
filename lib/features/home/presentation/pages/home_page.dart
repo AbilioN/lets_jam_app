@@ -108,9 +108,8 @@ class HomePage extends StatelessWidget {
               controller: chatIdController,
               decoration: const InputDecoration(
                 labelText: 'Chat ID (opcional)',
-                hintText: 'ex: 1, 2, 3... (deixe vazio para criar novo)',
+                hintText: 'ex: 550e8400-e29b-41d4-a716-446655440000 (deixe vazio para criar novo)',
               ),
-              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 16),
             TextField(
@@ -138,10 +137,11 @@ class HomePage extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              final chatId = int.tryParse(chatIdController.text.trim());
+              final chatIdText = chatIdController.text.trim();
+              final chatId = chatIdText.isNotEmpty ? chatIdText : null;
               final otherUserId = int.tryParse(otherUserIdController.text.trim());
               final otherUserType = otherUserTypeController.text.trim();
-              
+
               if (chatId != null || (otherUserId != null && otherUserType.isNotEmpty)) {
                 Navigator.of(context).pop();
                 AppRouter.navigateToChat(

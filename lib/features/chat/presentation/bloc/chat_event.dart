@@ -8,19 +8,19 @@ abstract class ChatEvent extends Equatable {
 }
 
 class ChatInitialized extends ChatEvent {
-  final int? chatId;
+  final String? chatId;
 
   const ChatInitialized({
     this.chatId,
   });
 
   @override
-  List<Object> get props => [chatId ?? 0];
+  List<Object> get props => [chatId ?? ''];
 }
 
 class MessageSent extends ChatEvent {
   final String content;
-  final int? chatId;
+  final String? chatId;
   final int? otherUserId;
   final String? otherUserType;
 
@@ -32,7 +32,7 @@ class MessageSent extends ChatEvent {
   });
 
   @override
-  List<Object> get props => [content, chatId ?? 0, otherUserId ?? 0, otherUserType ?? ''];
+  List<Object> get props => [content, chatId ?? '', otherUserId ?? 0, otherUserType ?? ''];
 }
 
 class MessageReceived extends ChatEvent {
@@ -64,7 +64,7 @@ class LoadConversation extends ChatEvent {
 }
 
 class LoadChatMessages extends ChatEvent {
-  final int chatId;
+  final String chatId;
   final int page;
   final int perPage;
 
@@ -122,7 +122,7 @@ class CreateGroupChat extends ChatEvent {
 class ChatDisconnected extends ChatEvent {}
 
 class StartTyping extends ChatEvent {
-  final int chatId;
+  final String chatId;
 
   const StartTyping({required this.chatId});
 
@@ -131,7 +131,7 @@ class StartTyping extends ChatEvent {
 }
 
 class StopTyping extends ChatEvent {
-  final int chatId;
+  final String chatId;
 
   const StopTyping({required this.chatId});
 

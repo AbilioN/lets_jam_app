@@ -34,7 +34,7 @@ class AppRouter {
         );
       case chat:
         final args = settings.arguments as Map<String, dynamic>?;
-        final chatId = args?['chatId'] as int?;
+        final chatId = args?['chatId'] != null ? args!['chatId'].toString() : null;
         final otherUserId = args?['otherUserId'] as int?;
         final otherUserType = args?['otherUserType'] as String?;
         final chatName = args?['chatName'] as String?;
@@ -78,7 +78,7 @@ class AppRouter {
   }
 
   static void navigateToChat(BuildContext context, {
-    int? chatId,
+    String? chatId,
     int? otherUserId,
     String? otherUserType,
     String? chatName,

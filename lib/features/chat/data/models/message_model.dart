@@ -1,8 +1,8 @@
 class MessageModel {
-  final int id;
-  final int chatId;
+  final String id;
+  final String chatId;
   final String content;
-  final int senderId;
+  final String senderId;
   final String senderType;
   final String messageType;
   final Map<String, dynamic>? metadata;
@@ -27,10 +27,10 @@ class MessageModel {
 
   factory MessageModel.fromJson(Map<String, dynamic> json) {
     return MessageModel(
-      id: _toInt(json['id']),
-      chatId: _toInt(json['chat_id']),
+      id: (json['id'] ?? '').toString(),
+      chatId: (json['chat_id'] ?? '').toString(),
       content: json['content'] as String,
-      senderId: _toInt(json['sender_id']),
+      senderId: (json['sender_id'] ?? '').toString(),
       senderType: json['sender_type'] as String,
       messageType: json['message_type'] as String? ?? 'text',
       metadata: json['metadata'] as Map<String, dynamic>?,
@@ -40,13 +40,6 @@ class MessageModel {
       createdAt: json['created_at'] as String,
       updatedAt: json['updated_at'] as String?,
     );
-  }
-
-  static int _toInt(dynamic v) {
-    if (v is int) return v;
-    if (v is double) return v.toInt();
-    if (v is String) return int.parse(v);
-    return 0;
   }
 
   Map<String, dynamic> toJson() {

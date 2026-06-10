@@ -12,7 +12,7 @@ class ChatInitial extends ChatState {}
 class ChatLoading extends ChatState {}
 
 class ChatConnected extends ChatState {
-  final int? chatId;
+  final String? chatId;
   final List<chat_service.ChatMessage> messages;
   final List<chat_service.Chat> chats;
 
@@ -23,7 +23,7 @@ class ChatConnected extends ChatState {
   });
 
   @override
-  List<Object> get props => [chatId ?? 0, messages, chats];
+  List<Object> get props => [chatId ?? '', messages, chats];
 }
 
 class ChatError extends ChatState {

@@ -14,7 +14,7 @@ class ChatsRepositoryImpl implements ChatsRepository {
   }
 
   @override
-  Future<MessagesResponse> getChatMessages(int chatId, {int page = 1, int perPage = 50}) async {
+  Future<MessagesResponse> getChatMessages(String chatId, {int page = 1, int perPage = 50}) async {
     return await _chatsApi.getChatMessages(chatId, page: page, perPage: perPage);
   }
 }

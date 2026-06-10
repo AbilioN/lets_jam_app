@@ -19,7 +19,7 @@ class PusherService {
   // Chat-specific callbacks
   static Function(ChatMessage message)? onChatMessageReceived;
   static Function(String chatId, String eventType, dynamic data)? onChatEvent;
-  static Function(int chatId, int userId, bool isTyping)? onTypingReceived;
+  static Function(String chatId, String userId, bool isTyping)? onTypingReceived;
 
   static final List<ChatMessage> _messages = [];
   static List<ChatMessage> get messages => List.unmodifiable(_messages);
@@ -132,7 +132,7 @@ class PusherService {
   // ── Per-chat private channel (typing indicators) ─────────────────────────
 
   /// Subscribe to private-chat.{chatId} for typing indicators only.
-  static Future<void> subscribeToChat(int chatId) async {
+  static Future<void> subscribeToChat(String chatId) async {
     if (_pusher == null) await initialize();
 
     final channelName = 'private-chat.$chatId';
@@ -152,7 +152,7 @@ class PusherService {
     print('🟢 Pusher - Chat channel subscribed: $channelName');
   }
 
-  static Future<void> unsubscribeFromChat(int chatId) async {
+  static Future<void> unsubscribeFromChat(String chatId) async {
     final channelName = 'private-chat.$chatId';
     if (_chatChannels.containsKey(channelName)) {
       await _pusher!.unsubscribe(channelName: channelName);
@@ -171,7 +171,7 @@ class PusherService {
 
   // ── Typing indicators via client events ──────────────────────────────────
 
-  static Future<void> triggerTyping(int chatId, int userId, bool isTyping) async {
+  static Future<void> triggerTyping(String chatId, String userId, bool isTyping) async {
     final channelName = 'private-chat.$chatId';
     if (!_chatChannels.containsKey(channelName) || _pusher == null) return;
 
@@ -193,7 +193,7 @@ class PusherService {
     // General Pusher events — currently handled per-channel via onEvent callbacks
   }
 
-  static void _handleChatEventWithId(PusherEvent event, int chatId) {
+  static void _handleChatEventWithId(PusherEvent event, String chatId) {
     try {
       // Per-chat channel is used ONLY for typing indicators (client events).
       // MessageSent events arrive here too (backend broadcasts on both personal
@@ -203,12 +203,12 @@ class PusherService {
         case 'client-typing':
           final data = event.data is String ? jsonDecode(event.data as String) : event.data;
           final userId = (data as Map)['user_id'];
-          if (userId != null) onTypingReceived?.call(chatId, userId as int, true);
+          if (userId != null) onTypingReceived?.call(chatId, userId.toString(), true);
           break;
         case 'client-stop-typing':
           final data = event.data is String ? jsonDecode(event.data as String) : event.data;
           final userId = (data as Map)['user_id'];
-          if (userId != null) onTypingReceived?.call(chatId, userId as int, false);
+          if (userId != null) onTypingReceived?.call(chatId, userId.toString(), false);
           break;
         default:
           // Silently ignore other events on per-chat channel (incl. MessageSent duplicate)
@@ -273,9 +273,9 @@ class PusherService {
     }
   }
 
-  static void _handleMessageSentLegacy(PusherEvent event, {int? chatId}) {
+  static void _handleMessageSentLegacy(PusherEvent event, {String? chatId}) {
     if (chatId != null) {
-      onChatEvent?.call(chatId.toString(), 'MessageSent', event.data);
+      onChatEvent?.call(chatId, 'MessageSent', event.data);
     }
   }
 
@@ -292,10 +292,10 @@ class PusherService {
         return null;
       }
 
-      final id = _toInt(data['id']) ?? DateTime.now().millisecondsSinceEpoch;
-      final chatId = _toInt(data['chat_id']) ?? 0;
+      final id = data['id'] != null ? data['id'].toString() : DateTime.now().millisecondsSinceEpoch.toString();
+      final chatId = data['chat_id'] != null ? data['chat_id'].toString() : '';
       final content = data['content'] as String? ?? '';
-      final senderId = _toInt(data['sender_id']) ?? 0;
+      final senderId = data['sender_id'] != null ? data['sender_id'].toString() : '';
       final senderType = data['sender_type'] as String? ?? 'user';
       final isRead = data['is_read'] == true;
       final createdAtRaw = data['created_at'] as String?;
@@ -323,13 +323,6 @@ class PusherService {
     }
   }
 
-  static int? _toInt(dynamic value) {
-    if (value == null) return null;
-    if (value is int) return value;
-    if (value is String) return int.tryParse(value);
-    return null;
-  }
-
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   static Future<void> subscribeToChatChannel(String channelName) async {
@@ -341,7 +334,7 @@ class PusherService {
     print('🟢 Pusher - Subscribed to: $channelName');
   }
 
-  static Future<void> testChatChannelSubscription(int chatId) async {
+  static Future<void> testChatChannelSubscription(String chatId) async {
     if (_pusher == null) await initialize();
     await subscribeToChat(chatId);
     print('🧪 Pusher - Test subscription to chat $chatId complete');

@@ -19,7 +19,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final GetChatMessagesUseCase _getChatMessagesUseCase;
   
   // Rastrear o chat ativo para gerenciar inscrições
-  int? _currentChatId;
+  String? _currentChatId;
 
   ChatBloc() : _getChatMessagesUseCase = getIt<GetChatMessagesUseCase>(), super(ChatInitial()) {
     on<ChatInitialized>(_onChatInitialized);
@@ -86,10 +86,10 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       // Register personal channel callback so messages from any chat update this bloc
       pusher_service.PusherService.onChatMessageReceived = (msg) {
         add(MessageReceived(message: chat_service.ChatMessage(
-          id: msg.id is int ? msg.id as int : (int.tryParse(msg.id.toString()) ?? 0),
-          chatId: msg.chatId is int ? msg.chatId as int : (int.tryParse(msg.chatId.toString()) ?? 0),
+          id: msg.id.toString(),
+          chatId: msg.chatId.toString(),
           content: msg.content,
-          senderId: msg.senderId is int ? msg.senderId as int : (int.tryParse(msg.senderId.toString()) ?? 0),
+          senderId: msg.senderId.toString(),
           senderType: msg.senderType,
           isRead: msg.isRead,
           createdAt: msg.createdAt,
@@ -177,11 +177,11 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           // Build an optimistic message from known data so it appears immediately.
           final authState = getIt<auth_bloc.AuthBloc>().state;
           final senderId = authState is auth_bloc.AuthAuthenticated
-              ? (int.tryParse(authState.user.id) ?? 0)
-              : 0;
+              ? authState.user.id
+              : '';
 
           final optimisticMsg = chat_service.ChatMessage(
-            id: DateTime.now().millisecondsSinceEpoch,
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
             chatId: event.chatId!,
             content: event.content,
             senderId: senderId,
@@ -459,26 +459,26 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     }
     
     final messageContent = messageData['content'] as String?;
-    final senderId = _toIntNullable(messageData['sender_id']);
+    final senderId = messageData['sender_id'] != null ? messageData['sender_id'].toString() : null;
     final senderType = messageData['sender_type'] as String?;
     final createdAt = messageData['created_at'] as String?;
 
     print('🔵 ChatBloc - content: $messageContent');
-    print('🔵 ChatBloc - sender_id: $senderId (tipo: ${senderId.runtimeType})');
+    print('🔵 ChatBloc - sender_id: $senderId');
     print('🔵 ChatBloc - sender_type: $senderType');
     print('🔵 ChatBloc - created_at: $createdAt');
 
     if (messageContent != null && senderId != null && senderType != null && createdAt != null) {
       final message = chat_service.ChatMessage(
-        id: messageData['id'] as int? ?? DateTime.now().millisecondsSinceEpoch, // Usar ID do servidor se disponível
-        chatId: int.parse(chatId), // Converter String para int
+        id: messageData['id'] != null ? messageData['id'].toString() : DateTime.now().millisecondsSinceEpoch.toString(),
+        chatId: chatId,
         content: messageContent,
         senderId: senderId,
         senderType: senderType,
         isRead: messageData['is_read'] as bool? ?? false,
         createdAt: _parseDate(createdAt),
       );
-      
+
       print('🟢 ChatBloc - Mensagem criada com sucesso: ${message.content}');
       add(MessageReceived(message: message));
     } else {
@@ -487,22 +487,13 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     }
   }
 
-  static int? _toIntNullable(dynamic v) {
-    if (v == null) return null;
-    if (v is int) return v;
-    if (v is double) return v.toInt();
-    if (v is String) return int.tryParse(v);
-    return null;
-  }
-
   Future<void> _onStartTyping(
     StartTyping event,
     Emitter<ChatState> emit,
   ) async {
     final authState = getIt<auth_bloc.AuthBloc>().state;
     if (authState is auth_bloc.AuthAuthenticated) {
-      final userId = int.tryParse(authState.user.id) ?? 0;
-      await pusher_service.PusherService.triggerTyping(event.chatId, userId, true);
+      await pusher_service.PusherService.triggerTyping(event.chatId, authState.user.id, true);
     }
   }
 
@@ -512,8 +503,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ) async {
     final authState = getIt<auth_bloc.AuthBloc>().state;
     if (authState is auth_bloc.AuthAuthenticated) {
-      final userId = int.tryParse(authState.user.id) ?? 0;
-      await pusher_service.PusherService.triggerTyping(event.chatId, userId, false);
+      await pusher_service.PusherService.triggerTyping(event.chatId, authState.user.id, false);
     }
   }
 

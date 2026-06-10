@@ -89,7 +89,7 @@ class ChatService {
   }
 
   /// Escuta mensagens de um chat específico
-  Future<void> listenToChat(int chatId) async {
+  Future<void> listenToChat(String chatId) async {
     try {
       if (_pusher == null) {
         await initialize();
@@ -119,7 +119,7 @@ class ChatService {
 
   /// Cria um chat privado entre dois usuários
   Future<Chat> createPrivateChat({
-    required int otherUserId,
+    required String otherUserId,
     required String otherUserType,
   }) async {
     try {
@@ -224,7 +224,7 @@ class ChatService {
   /// Envia uma mensagem para outro usuário (cria/usa chat privado)
   Future<ChatMessage> sendMessageToUser({
     required String content,
-    required int otherUserId,
+    required String otherUserId,
     required String otherUserType,
   }) async {
     try {
@@ -277,7 +277,7 @@ class ChatService {
 
   /// Envia uma mensagem para um chat específico
   Future<ChatMessage> sendMessageToChat({
-    required int chatId,
+    required String chatId,
     required String content,
   }) async {
     try {
@@ -321,7 +321,7 @@ class ChatService {
 
   /// Busca conversa privada entre dois usuários
   Future<ChatConversation> getConversation({
-    required int otherUserId,
+    required String otherUserId,
     required String otherUserType,
     int page = 1,
     int perPage = 50,
@@ -492,11 +492,11 @@ class ChatService {
 
 /// Modelo de mensagem de chat
 class ChatMessage {
-  final int id;
-  final int chatId;
+  final String id;
+  final String chatId;
   final String content;
   final String senderType;
-  final int senderId;
+  final String senderId;
   final bool isRead;
   final DateTime createdAt;
 
@@ -512,12 +512,12 @@ class ChatMessage {
 
   factory ChatMessage.fromApiResponse(Map<String, dynamic> json) {
     return ChatMessage(
-      id: json['id'] as int,
-      chatId: json['chat_id'] as int,
+      id: (json['id'] ?? '').toString(),
+      chatId: (json['chat_id'] ?? '').toString(),
       content: json['content'] as String,
       senderType: json['sender_type'] as String,
-      senderId: json['sender_id'] as int,
-      isRead: json['is_read'] as bool,
+      senderId: (json['sender_id'] ?? '').toString(),
+      isRead: json['is_read'] == true || json['is_read'] == 1,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -530,7 +530,7 @@ class ChatMessage {
 
 /// Modelo de chat
 class Chat {
-  final int id;
+  final String id;
   final String type; // 'private' ou 'group'
   final String name;
   final String description;
@@ -550,7 +550,7 @@ class Chat {
 
   factory Chat.fromApiResponse(Map<String, dynamic> json) {
     return Chat(
-      id: json['id'] as int,
+      id: (json['id'] ?? '').toString(),
       type: json['type'] as String,
       name: json['name'] as String,
       description: json['description'] as String,
@@ -574,7 +574,7 @@ class Chat {
 
 /// Modelo de participante do chat
 class ChatParticipant {
-  final int userId;
+  final String userId;
   final String userType;
 
   ChatParticipant({
@@ -584,7 +584,7 @@ class ChatParticipant {
 
   factory ChatParticipant.fromApiResponse(Map<String, dynamic> json) {
     return ChatParticipant(
-      userId: json['user_id'] as int,
+      userId: (json['user_id'] ?? '').toString(),
       userType: json['user_type'] as String,
     );
   }
@@ -597,7 +597,7 @@ class ChatParticipant {
 
 /// Modelo de última mensagem do chat
 class ChatLastMessage {
-  final int id;
+  final String id;
   final String content;
   final DateTime createdAt;
 
@@ -609,7 +609,7 @@ class ChatLastMessage {
 
   factory ChatLastMessage.fromApiResponse(Map<String, dynamic> json) {
     return ChatLastMessage(
-      id: json['id'] as int,
+      id: (json['id'] ?? '').toString(),
       content: json['content'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
     );

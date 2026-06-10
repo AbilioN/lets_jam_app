@@ -27,7 +27,7 @@ class ChatExampleUsage {
       
       // 2. Criar um chat privado
       final chat = await chatService.createPrivateChat(
-        otherUserId: 2,
+        otherUserId: '2',
         otherUserType: 'user',
       );
       
@@ -46,7 +46,7 @@ class ChatExampleUsage {
       
       // 5. Buscar conversa
       final conversation = await chatService.getConversation(
-        otherUserId: 2,
+        otherUserId: '2',
         otherUserType: 'user',
       );
       
@@ -74,9 +74,9 @@ class ChatExampleUsage {
         name: 'Grupo de Suporte',
         description: 'Chat para suporte geral',
         participants: [
-          ChatParticipant(userId: 1, userType: 'admin'),
-          ChatParticipant(userId: 2, userType: 'user'),
-          ChatParticipant(userId: 3, userType: 'admin'),
+          ChatParticipant(userId: '1', userType: 'admin'),
+          ChatParticipant(userId: '2', userType: 'user'),
+          ChatParticipant(userId: '3', userType: 'admin'),
         ],
       );
       
@@ -193,7 +193,7 @@ class ChatExampleUsage {
     // Navegar para chat existente
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ChatPage(chatId: 1),
+        builder: (_) => const ChatPage(chatId: '1'),
       ),
     );
     
@@ -230,12 +230,12 @@ class ChatExampleUsage {
     
     // Criar múltiplos chats
     final chat1 = await chatService.createPrivateChat(
-      otherUserId: 2,
+      otherUserId: '2',
       otherUserType: 'user',
     );
-    
+
     final chat2 = await chatService.createPrivateChat(
-      otherUserId: 3,
+      otherUserId: '3',
       otherUserType: 'admin',
     );
     
@@ -273,20 +273,20 @@ class ChatExampleUsage {
     
     // Buscar conversa com paginação
     final conversation = await chatService.getConversation(
-      otherUserId: 2,
+      otherUserId: '2',
       otherUserType: 'user',
       page: 1,
       perPage: 20,
     );
-    
+
     print('🟢 Página ${conversation.pagination.currentPage} de ${conversation.pagination.lastPage}');
     print('🟢 Total de mensagens: ${conversation.pagination.total}');
     print('🟢 Mensagens nesta página: ${conversation.messages.length}');
-    
+
     // Se houver mais páginas, carregar a próxima
     if (conversation.pagination.currentPage < conversation.pagination.lastPage) {
       final nextPage = await chatService.getConversation(
-        otherUserId: 2,
+        otherUserId: '2',
         otherUserType: 'user',
         page: conversation.pagination.currentPage + 1,
         perPage: 20,
