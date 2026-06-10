@@ -15,6 +15,11 @@ class HomePage extends StatelessWidget {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
+            icon: const Icon(Icons.person_outline),
+            onPressed: () => AppRouter.navigateToProfile(context),
+            tooltip: 'Profile',
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => _logout(context),
           ),

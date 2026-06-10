@@ -44,6 +44,17 @@ class UserModel extends User {
     return UserModel.fromJson(userData);
   }
 
+  static UserModel fromProfileResponse(Map<String, dynamic> response) {
+    final data = response['data'] as Map<String, dynamic>? ?? response;
+    return UserModel(
+      id: data['id'].toString(),
+      email: data['email'] as String,
+      name: data['name'] as String,
+      avatarUrl: data['avatar_url'] as String?,
+      channel: data['channel'] as String?,
+    );
+  }
+
   static String? extractToken(Map<String, dynamic> response) {
     return response['token'] as String?;
   }

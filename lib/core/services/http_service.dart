@@ -117,6 +117,17 @@ class HttpService {
     }
   }
 
+  Future<dynamic> patch(String endpoint, dynamic data) async {
+    try {
+      final response = await _dio.patch(endpoint, data: data);
+      return response.data;
+    } on DioException catch (e) {
+      _handleDioError(e);
+    } catch (e) {
+      throw Exception('Erro inesperado: $e');
+    }
+  }
+
   Future<dynamic> put(String endpoint, dynamic data) async {
     try {
       final response = await _dio.put(endpoint, data: data);

@@ -50,4 +50,39 @@ class VerifyEmailRequested extends AuthEvent {
   List<Object> get props => [email, code];
 }
 
-class LogoutRequested extends AuthEvent {} 
+class LogoutRequested extends AuthEvent {}
+
+class ForgotPasswordRequested extends AuthEvent {
+  final String email;
+
+  const ForgotPasswordRequested({required this.email});
+
+  @override
+  List<Object> get props => [email];
+}
+
+class UpdateProfileRequested extends AuthEvent {
+  final String name;
+
+  const UpdateProfileRequested({required this.name});
+
+  @override
+  List<Object> get props => [name];
+}
+
+class ChangePasswordRequested extends AuthEvent {
+  final String currentPassword;
+  final String newPassword;
+  final String confirmation;
+
+  const ChangePasswordRequested({
+    required this.currentPassword,
+    required this.newPassword,
+    required this.confirmation,
+  });
+
+  @override
+  List<Object> get props => [currentPassword, newPassword, confirmation];
+}
+
+class LoadProfileRequested extends AuthEvent {} 

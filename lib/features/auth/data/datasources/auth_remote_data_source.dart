@@ -11,6 +11,14 @@ abstract class AuthRemoteDataSource {
   Future<UserModel> register(String name, String email, String password, String passwordConfirmation);
   Future<Map<String, String>> verifyEmail(String email, String code);
   Future<void> logout();
+  Future<Map<String, dynamic>> forgotPassword(String email);
+  Future<Map<String, dynamic>> getProfile();
+  Future<Map<String, dynamic>> updateProfile(String name);
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String newPasswordConfirmation,
+  });
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -113,6 +121,34 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } catch (e) {
       throw Exception('Erro na verificação de email: $e');
     }
+  }
+
+  @override
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    return await authApi.forgotPassword(email);
+  }
+
+  @override
+  Future<Map<String, dynamic>> getProfile() async {
+    return await authApi.getProfile();
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateProfile(String name) async {
+    return await authApi.updateProfile(name);
+  }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String newPasswordConfirmation,
+  }) async {
+    await authApi.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+      newPasswordConfirmation: newPasswordConfirmation,
+    );
   }
 
   void _handleDioError(DioException e) {

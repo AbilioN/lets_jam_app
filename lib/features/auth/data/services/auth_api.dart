@@ -92,4 +92,47 @@ class AuthApi {
   Future<void> logout() async {
     await _httpService.post('/auth/logout', {});
   }
+
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    final response = await _httpService.post('/forgot-password', {'email': email});
+    return response as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> resetPassword({
+    required String token,
+    required String email,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    final response = await _httpService.post('/reset-password', {
+      'token': token,
+      'email': email,
+      'password': password,
+      'password_confirmation': passwordConfirmation,
+    });
+    return response as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getProfile() async {
+    final response = await _httpService.get('/user/me');
+    return response as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> updateProfile(String name) async {
+    final response = await _httpService.patch('/user/me', {'name': name});
+    return response as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String newPasswordConfirmation,
+  }) async {
+    final response = await _httpService.patch('/user/password', {
+      'current_password': currentPassword,
+      'password': newPassword,
+      'password_confirmation': newPasswordConfirmation,
+    });
+    return response as Map<String, dynamic>;
+  }
 } 

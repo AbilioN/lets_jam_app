@@ -4,6 +4,8 @@ import '../../domain/entities/user.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
 import '../../domain/usecases/verify_email_usecase.dart';
+import '../../domain/usecases/forgot_password_usecase.dart';
+import '../../domain/repositories/auth_repository.dart';
 import '../../../../core/services/pusher_service.dart' as pusher_service;
 
 part 'auth_event.dart';
@@ -13,16 +15,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LoginUseCase loginUseCase;
   final RegisterUseCase registerUseCase;
   final VerifyEmailUseCase verifyEmailUseCase;
+  final ForgotPasswordUseCase forgotPasswordUseCase;
+  final AuthRepository authRepository;
 
   AuthBloc({
     required this.loginUseCase,
     required this.registerUseCase,
     required this.verifyEmailUseCase,
+    required this.forgotPasswordUseCase,
+    required this.authRepository,
   }) : super(AuthInitial()) {
     on<LoginRequested>(_onLoginRequested);
     on<RegisterRequested>(_onRegisterRequested);
     on<VerifyEmailRequested>(_onVerifyEmailRequested);
     on<LogoutRequested>(_onLogoutRequested);
+    on<ForgotPasswordRequested>(_onForgotPasswordRequested);
+    on<LoadProfileRequested>(_onLoadProfileRequested);
+    on<UpdateProfileRequested>(_onUpdateProfileRequested);
+    on<ChangePasswordRequested>(_onChangePasswordRequested);
   }
 
   Future<void> _onLoginRequested(
@@ -163,5 +173,57 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     await pusher_service.PusherService.unsubscribeFromPersonalChannel();
     await pusher_service.PusherService.unsubscribeFromAllChats();
     emit(AuthUnauthenticated());
+  }
+
+  Future<void> _onForgotPasswordRequested(
+    ForgotPasswordRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    final result = await forgotPasswordUseCase(ForgotPasswordParams(email: event.email));
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (message) => emit(PasswordResetEmailSent(message: message)),
+    );
+  }
+
+  Future<void> _onLoadProfileRequested(
+    LoadProfileRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    final result = await authRepository.getProfile();
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (user) => emit(ProfileLoaded(user)),
+    );
+  }
+
+  Future<void> _onUpdateProfileRequested(
+    UpdateProfileRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    final result = await authRepository.updateProfile(event.name);
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (user) => emit(ProfileUpdated(user)),
+    );
+  }
+
+  Future<void> _onChangePasswordRequested(
+    ChangePasswordRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    final result = await authRepository.changePassword(
+      event.currentPassword,
+      event.newPassword,
+      event.confirmation,
+    );
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (_) => emit(PasswordChanged()),
+    );
   }
 } 

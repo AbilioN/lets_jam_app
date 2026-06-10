@@ -8,4 +8,8 @@ abstract class AuthRepository {
   Future<Either<Failure, Map<String, String>>> verifyEmail(String email, String code);
   Future<Either<Failure, void>> logout();
   Future<Either<Failure, User?>> getCurrentUser();
+  Future<Either<Failure, String>> forgotPassword(String email);
+  Future<Either<Failure, User>> getProfile();
+  Future<Either<Failure, User>> updateProfile(String name);
+  Future<Either<Failure, void>> changePassword(String currentPassword, String newPassword, String confirmation);
 } 

@@ -5,6 +5,7 @@ import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_data_source.dart';
 import '../datasources/auth_remote_data_source.dart';
+import '../models/user_model.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
@@ -89,6 +90,70 @@ class AuthRepositoryImpl implements AuthRepository {
       try {
         final result = await remoteDataSource.verifyEmail(email, code);
         return Right(result);
+      } catch (e) {
+        return Left(ServerFailure(e.toString()));
+      }
+    } else {
+      return Left(NetworkFailure('No internet connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, String>> forgotPassword(String email) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final result = await remoteDataSource.forgotPassword(email);
+        return Right(result['message'] as String? ?? 'Reset link sent.');
+      } catch (e) {
+        return Left(ServerFailure(e.toString()));
+      }
+    } else {
+      return Left(NetworkFailure('No internet connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, User>> getProfile() async {
+    if (await networkInfo.isConnected) {
+      try {
+        final result = await remoteDataSource.getProfile();
+        final user = UserModel.fromProfileResponse(result);
+        return Right(user);
+      } catch (e) {
+        return Left(ServerFailure(e.toString()));
+      }
+    } else {
+      return Left(NetworkFailure('No internet connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, User>> updateProfile(String name) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final result = await remoteDataSource.updateProfile(name);
+        final user = UserModel.fromProfileResponse(result);
+        await localDataSource.cacheUser(user);
+        return Right(user);
+      } catch (e) {
+        return Left(ServerFailure(e.toString()));
+      }
+    } else {
+      return Left(NetworkFailure('No internet connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> changePassword(
+    String currentPassword, String newPassword, String confirmation) async {
+    if (await networkInfo.isConnected) {
+      try {
+        await remoteDataSource.changePassword(
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+          newPasswordConfirmation: confirmation,
+        );
+        return const Right(null);
       } catch (e) {
         return Left(ServerFailure(e.toString()));
       }

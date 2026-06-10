@@ -55,4 +55,42 @@ class AuthError extends AuthState {
   List<Object> get props => [message];
 }
 
-class AuthUnauthenticated extends AuthState {} 
+class AuthUnauthenticated extends AuthState {}
+
+class PasswordResetEmailSent extends AuthState {
+  final String message;
+
+  const PasswordResetEmailSent({required this.message});
+
+  @override
+  List<Object> get props => [message];
+}
+
+class ProfileLoaded extends AuthState {
+  final User user;
+
+  const ProfileLoaded(this.user);
+
+  @override
+  List<Object> get props => [user];
+}
+
+class ProfileUpdated extends AuthState {
+  final User user;
+
+  const ProfileUpdated(this.user);
+
+  @override
+  List<Object> get props => [user];
+}
+
+class PasswordChanged extends AuthState {}
+
+class AuthSuccess extends AuthState {
+  final String message;
+
+  const AuthSuccess({required this.message});
+
+  @override
+  List<Object> get props => [message];
+} 

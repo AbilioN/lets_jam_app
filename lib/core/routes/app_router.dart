@@ -5,6 +5,8 @@ import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/chat/presentation/pages/chat_page.dart';
 import '../../features/chat/presentation/pages/chats_page.dart';
+import '../../features/auth/presentation/pages/forgot_password_page.dart';
+import '../../features/auth/presentation/pages/profile_page.dart';
 
 class AppRouter {
   static const String splash = '/';
@@ -13,6 +15,8 @@ class AppRouter {
   static const String home = '/home';
   static const String chat = '/chat';
   static const String chats = '/chats';
+  static const String forgotPassword = '/forgot-password';
+  static const String profile = '/profile';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -49,6 +53,14 @@ class AppRouter {
       case chats:
         return MaterialPageRoute(
           builder: (_) => const ChatsPage(),
+        );
+      case forgotPassword:
+        return MaterialPageRoute(
+          builder: (_) => const ForgotPasswordPage(),
+        );
+      case profile:
+        return MaterialPageRoute(
+          builder: (_) => const ProfilePage(),
         );
       default:
         return MaterialPageRoute(
@@ -96,5 +108,13 @@ class AppRouter {
 
   static void navigateToChats(BuildContext context) {
     Navigator.of(context).pushNamed(chats);
+  }
+
+  static void navigateToForgotPassword(BuildContext context) {
+    Navigator.of(context).pushNamed(forgotPassword);
+  }
+
+  static void navigateToProfile(BuildContext context) {
+    Navigator.of(context).pushNamed(profile);
   }
 } 

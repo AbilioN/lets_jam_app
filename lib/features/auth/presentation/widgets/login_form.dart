@@ -72,7 +72,15 @@ class _LoginFormState extends State<LoginForm> {
                   return null;
                 },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => AppRouter.navigateToForgotPassword(context),
+                  child: const Text('Forgot password?'),
+                ),
+              ),
+              const SizedBox(height: 8),
               BlocBuilder<AuthBloc, AuthState>(
                 builder: (context, state) {
                   return SizedBox(

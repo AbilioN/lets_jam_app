@@ -15,6 +15,7 @@ import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/domain/usecases/verify_email_usecase.dart';
+import '../../features/auth/domain/usecases/forgot_password_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 
 import '../../features/chat/data/repositories/chats_repository_impl.dart';
@@ -84,6 +85,9 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<VerifyEmailUseCase>(
     () => VerifyEmailUseCase(getIt<AuthRepository>()),
   );
+  getIt.registerLazySingleton<ForgotPasswordUseCase>(
+    () => ForgotPasswordUseCase(getIt<AuthRepository>()),
+  );
 
   // Blocs
   getIt.registerLazySingleton<AuthBloc>(
@@ -91,6 +95,8 @@ Future<void> configureDependencies() async {
       loginUseCase: getIt<LoginUseCase>(),
       registerUseCase: getIt<RegisterUseCase>(),
       verifyEmailUseCase: getIt<VerifyEmailUseCase>(),
+      forgotPasswordUseCase: getIt<ForgotPasswordUseCase>(),
+      authRepository: getIt<AuthRepository>(),
     ),
   );
 
