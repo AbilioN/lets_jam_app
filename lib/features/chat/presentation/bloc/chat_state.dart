@@ -35,4 +35,13 @@ class ChatError extends ChatState {
   List<Object> get props => [message];
 }
 
-class ChatDisconnectedState extends ChatState {} 
+class ChatDisconnectedState extends ChatState {}
+
+class UserSearchResults extends ChatState {
+  final List<Map<String, dynamic>> users;
+
+  const UserSearchResults(this.users);
+
+  @override
+  List<Object> get props => [users];
+} 

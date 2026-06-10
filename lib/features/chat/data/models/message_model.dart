@@ -1,26 +1,48 @@
+class MessageReplyPreview {
+  final String id;
+  final String? content;
+  final String senderId;
+
+  MessageReplyPreview({required this.id, this.content, required this.senderId});
+
+  factory MessageReplyPreview.fromJson(Map<String, dynamic> json) {
+    return MessageReplyPreview(
+      id: (json['id'] ?? '').toString(),
+      content: json['content'] as String?,
+      senderId: (json['sender_id'] ?? '').toString(),
+    );
+  }
+}
+
 class MessageModel {
   final String id;
   final String chatId;
-  final String content;
+  final String? content;
   final String senderId;
   final String senderType;
   final String messageType;
   final Map<String, dynamic>? metadata;
   final bool isRead;
   final String? readAt;
+  final String? editedAt;
+  final String? replyToId;
+  final MessageReplyPreview? reply;
   final String createdAt;
   final String? updatedAt;
 
   MessageModel({
     required this.id,
     required this.chatId,
-    required this.content,
+    this.content,
     required this.senderId,
     required this.senderType,
     required this.messageType,
     this.metadata,
     required this.isRead,
     this.readAt,
+    this.editedAt,
+    this.replyToId,
+    this.reply,
     required this.createdAt,
     this.updatedAt,
   });
@@ -29,14 +51,18 @@ class MessageModel {
     return MessageModel(
       id: (json['id'] ?? '').toString(),
       chatId: (json['chat_id'] ?? '').toString(),
-      content: json['content'] as String,
+      content: json['content'] as String?,
       senderId: (json['sender_id'] ?? '').toString(),
       senderType: json['sender_type'] as String,
       messageType: json['message_type'] as String? ?? 'text',
       metadata: json['metadata'] as Map<String, dynamic>?,
-      // MySQL stores booleans as TINYINT(1): 0 or 1
       isRead: json['is_read'] == true || json['is_read'] == 1,
       readAt: json['read_at'] as String?,
+      editedAt: json['edited_at'] as String?,
+      replyToId: json['reply_to_id'] as String?,
+      reply: json['reply'] != null
+          ? MessageReplyPreview.fromJson(json['reply'] as Map<String, dynamic>)
+          : null,
       createdAt: json['created_at'] as String,
       updatedAt: json['updated_at'] as String?,
     );
@@ -53,14 +79,40 @@ class MessageModel {
       'metadata': metadata,
       'is_read': isRead,
       'read_at': readAt,
+      'edited_at': editedAt,
+      'reply_to_id': replyToId,
       'created_at': createdAt,
       'updated_at': updatedAt,
     };
   }
 
+  MessageModel copyWith({
+    String? content,
+    bool? isRead,
+    String? readAt,
+    String? editedAt,
+  }) {
+    return MessageModel(
+      id: id,
+      chatId: chatId,
+      content: content ?? this.content,
+      senderId: senderId,
+      senderType: senderType,
+      messageType: messageType,
+      metadata: metadata,
+      isRead: isRead ?? this.isRead,
+      readAt: readAt ?? this.readAt,
+      editedAt: editedAt ?? this.editedAt,
+      replyToId: replyToId,
+      reply: reply,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
+
   @override
   String toString() {
-    return 'MessageModel(id: $id, chatId: $chatId, content: $content, senderId: $senderId, senderType: $senderType, messageType: $messageType, isRead: $isRead, createdAt: $createdAt)';
+    return 'MessageModel(id: $id, chatId: $chatId, content: $content, senderId: $senderId, senderType: $senderType)';
   }
 }
 

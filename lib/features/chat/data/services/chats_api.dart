@@ -49,15 +49,37 @@ class ChatsApi {
   Future<MessagesResponse> getChatMessages(String chatId, {int page = 1, int perPage = 50}) async {
     try {
       final response = await _httpService.get('/chat/$chatId/messages?page=$page&per_page=$perPage');
-      print('🔵 ChatsApi - Resposta getChatMessages: $response');
-      print('🔵 ChatsApi - Tipo da resposta: ${response.runtimeType}');
-      
-      // Deixar a validação para o fromJson
       return MessagesResponse.fromJson(response);
     } catch (e, st) {
-      print('🔴 ChatsApi - Erro getChatMessages: $e');
-      print('🔴 ChatsApi - Stack: $st');
       throw Exception('Erro ao buscar mensagens do chat: $e');
     }
+  }
+
+  Future<void> sendMessage(String chatId, String content, {String? replyToId}) async {
+    final body = <String, dynamic>{
+      'content': content,
+      'message_type': 'text',
+    };
+    if (replyToId != null) body['reply_to_id'] = replyToId;
+    await _httpService.post('/chat/$chatId/send', body);
+  }
+
+  Future<void> editMessage(String chatId, String messageId, String content) async {
+    await _httpService.patch('/chat/$chatId/messages/$messageId', {'content': content});
+  }
+
+  Future<void> deleteMessage(String chatId, String messageId) async {
+    await _httpService.delete('/chat/$chatId/messages/$messageId');
+  }
+
+  Future<void> markChatAsRead(String chatId) async {
+    await _httpService.post('/chat/$chatId/read', {});
+  }
+
+  Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+    final response = await _httpService.get('/users/search?q=${Uri.encodeComponent(query)}');
+    final data = response['data'] ?? response;
+    if (data is List) return data.cast<Map<String, dynamic>>();
+    return [];
   }
 }

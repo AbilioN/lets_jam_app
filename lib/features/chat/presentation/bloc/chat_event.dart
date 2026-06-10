@@ -121,6 +121,61 @@ class CreateGroupChat extends ChatEvent {
 
 class ChatDisconnected extends ChatEvent {}
 
+class EditMessageRequested extends ChatEvent {
+  final String messageId;
+  final String newContent;
+
+  const EditMessageRequested({required this.messageId, required this.newContent});
+
+  @override
+  List<Object> get props => [messageId, newContent];
+}
+
+class DeleteMessageRequested extends ChatEvent {
+  final String messageId;
+
+  const DeleteMessageRequested({required this.messageId});
+
+  @override
+  List<Object> get props => [messageId];
+}
+
+class MarkChatAsRead extends ChatEvent {
+  const MarkChatAsRead();
+}
+
+class SearchUsersRequested extends ChatEvent {
+  final String query;
+
+  const SearchUsersRequested({required this.query});
+
+  @override
+  List<Object> get props => [query];
+}
+
+class _PusherMessageEdited extends ChatEvent {
+  final String id;
+  final String content;
+  final String? editedAt;
+  const _PusherMessageEdited({required this.id, required this.content, this.editedAt});
+  @override
+  List<Object> get props => [id, content];
+}
+
+class _PusherMessageDeleted extends ChatEvent {
+  final String id;
+  const _PusherMessageDeleted({required this.id});
+  @override
+  List<Object> get props => [id];
+}
+
+class _PusherMessageRead extends ChatEvent {
+  final String readerId;
+  const _PusherMessageRead({required this.readerId});
+  @override
+  List<Object> get props => [readerId];
+}
+
 class StartTyping extends ChatEvent {
   final String chatId;
 

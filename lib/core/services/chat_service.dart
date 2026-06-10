@@ -499,6 +499,10 @@ class ChatMessage {
   final String senderId;
   final bool isRead;
   final DateTime createdAt;
+  final String? editedAt;
+  final String? replyToId;
+  final String? replyContent;
+  final bool isDeleted;
 
   ChatMessage({
     required this.id,
@@ -508,17 +512,48 @@ class ChatMessage {
     required this.senderId,
     required this.isRead,
     required this.createdAt,
+    this.editedAt,
+    this.replyToId,
+    this.replyContent,
+    this.isDeleted = false,
   });
 
+  ChatMessage copyWith({
+    String? content,
+    bool? isRead,
+    String? editedAt,
+    bool? isDeleted,
+  }) {
+    return ChatMessage(
+      id: id,
+      chatId: chatId,
+      content: content ?? this.content,
+      senderType: senderType,
+      senderId: senderId,
+      isRead: isRead ?? this.isRead,
+      createdAt: createdAt,
+      editedAt: editedAt ?? this.editedAt,
+      replyToId: replyToId,
+      replyContent: replyContent,
+      isDeleted: isDeleted ?? this.isDeleted,
+    );
+  }
+
   factory ChatMessage.fromApiResponse(Map<String, dynamic> json) {
+    final rawContent = json['content'];
+    final deleted = rawContent == null;
     return ChatMessage(
       id: (json['id'] ?? '').toString(),
       chatId: (json['chat_id'] ?? '').toString(),
-      content: json['content'] as String,
+      content: rawContent as String? ?? '',
       senderType: json['sender_type'] as String,
       senderId: (json['sender_id'] ?? '').toString(),
       isRead: json['is_read'] == true || json['is_read'] == 1,
       createdAt: DateTime.parse(json['created_at'] as String),
+      editedAt: json['edited_at'] as String?,
+      replyToId: json['reply_to_id'] as String?,
+      replyContent: (json['reply'] as Map<String, dynamic>?)?['content'] as String?,
+      isDeleted: deleted,
     );
   }
 

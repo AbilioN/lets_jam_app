@@ -1,12 +1,13 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'dart:convert'; // Added for json.decode
+import 'dart:convert';
 import '../../../../core/di/injection.dart';
 import '../../../../core/services/chat_service.dart' as chat_service;
 import '../../../../core/services/pusher_service.dart' as pusher_service;
 import '../../domain/usecases/get_chat_messages_usecase.dart';
 import '../../../../core/services/http_service.dart' as http_service;
 import '../../../auth/presentation/bloc/auth_bloc.dart' as auth_bloc;
+import '../../data/services/chats_api.dart';
 
 part 'chat_event.dart';
 part 'chat_state.dart';
@@ -33,6 +34,13 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<ChatDisconnected>(_onChatDisconnected);
     on<StartTyping>(_onStartTyping);
     on<StopTyping>(_onStopTyping);
+    on<EditMessageRequested>(_onEditMessageRequested);
+    on<DeleteMessageRequested>(_onDeleteMessageRequested);
+    on<MarkChatAsRead>(_onMarkChatAsRead);
+    on<SearchUsersRequested>(_onSearchUsersRequested);
+    on<_PusherMessageEdited>(_onPusherMessageEdited);
+    on<_PusherMessageDeleted>(_onPusherMessageDeleted);
+    on<_PusherMessageRead>(_onPusherMessageRead);
   }
 
   Future<void> _onChatInitialized(
@@ -64,19 +72,18 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           // Processar diferentes tipos de eventos
           switch (eventType) {
             case 'MessageSent':
-              _processPusherMessage(chatId, data);
-              break;
             case 'chat-message':
               _processPusherMessage(chatId, data);
               break;
-            case 'user-joined':
-              print('🟡 ChatBloc - Usuário entrou no chat: $data');
+            case 'MessageEdited':
+              _processPusherMessageEdited(data);
               break;
-            case 'user-left':
-              print('🟡 ChatBloc - Usuário saiu do chat: $data');
+            case 'MessageDeleted':
+              _processPusherMessageDeleted(data);
               break;
-            default:
-              print('🟡 ChatBloc - Evento não tratado: $eventType');
+            case 'MessageRead':
+              _processPusherMessageRead(data);
+              break;
           }
         } else {
           print('🟡 ChatBloc - Evento não é para o chat ativo (${chatId} != ${_currentChatId})');
@@ -119,11 +126,15 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
               chat_service.ChatMessage(
                 id: message.id,
                 chatId: message.chatId,
-                content: message.content,
+                content: message.content ?? '',
                 senderId: message.senderId,
                 senderType: message.senderType,
                 isRead: message.isRead,
                 createdAt: _parseDate(message.createdAt),
+                editedAt: message.editedAt,
+                replyToId: message.replyToId,
+                replyContent: message.reply?.content,
+                isDeleted: message.content == null,
               )
             ).toList();
             
@@ -360,15 +371,19 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         (failure) => emit(ChatError(failure.toString())),
         (messagesResponse) {
           // Converter MessageModel para ChatMessage
-          final messages = messagesResponse.messages.map((message) => 
+          final messages = messagesResponse.messages.map((message) =>
             chat_service.ChatMessage(
               id: message.id,
               chatId: message.chatId,
-              content: message.content,
+              content: message.content ?? '',
               senderId: message.senderId,
               senderType: message.senderType,
               isRead: message.isRead,
               createdAt: _parseDate(message.createdAt),
+              editedAt: message.editedAt,
+              replyToId: message.replyToId,
+              replyContent: message.reply?.content,
+              isDeleted: message.content == null,
             )
           ).toList();
           
@@ -482,10 +497,135 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   }
 
   /// Verifica o status das inscrições de canal
-  void _logChannelStatus() {
-    print('🔵 ChatBloc - Status das inscrições:');
-    print('🔵 ChatBloc - Chat ativo: $_currentChatId');
-    print('🔵 ChatBloc - Canais ativos no Pusher: ${pusher_service.PusherService.activeChannels}');
-    print('🔵 ChatBloc - Estado da conexão: ${pusher_service.PusherService.connectionState}');
+  void _logChannelStatus() {}
+
+  void _processPusherMessageEdited(dynamic data) {
+    Map<String, dynamic> d;
+    if (data is String) {
+      try { d = json.decode(data) as Map<String, dynamic>; } catch (_) { return; }
+    } else if (data is Map<String, dynamic>) {
+      d = data;
+    } else {
+      return;
+    }
+    final id = d['id']?.toString();
+    final content = d['content'] as String?;
+    if (id == null || content == null) return;
+    add(_PusherMessageEdited(id: id, content: content, editedAt: d['edited_at'] as String?));
+  }
+
+  void _processPusherMessageDeleted(dynamic data) {
+    Map<String, dynamic> d;
+    if (data is String) {
+      try { d = json.decode(data) as Map<String, dynamic>; } catch (_) { return; }
+    } else if (data is Map<String, dynamic>) {
+      d = data;
+    } else {
+      return;
+    }
+    final id = d['id']?.toString();
+    if (id == null) return;
+    add(_PusherMessageDeleted(id: id));
+  }
+
+  void _processPusherMessageRead(dynamic data) {
+    Map<String, dynamic> d;
+    if (data is String) {
+      try { d = json.decode(data) as Map<String, dynamic>; } catch (_) { return; }
+    } else if (data is Map<String, dynamic>) {
+      d = data;
+    } else {
+      return;
+    }
+    final readerId = d['reader_id']?.toString();
+    if (readerId == null) return;
+    add(_PusherMessageRead(readerId: readerId));
+  }
+
+  Future<void> _onPusherMessageEdited(
+    _PusherMessageEdited event,
+    Emitter<ChatState> emit,
+  ) async {
+    if (state is! ChatConnected) return;
+    final current = state as ChatConnected;
+    final updatedMessages = current.messages.map((m) {
+      if (m.id == event.id) return m.copyWith(content: event.content, editedAt: event.editedAt);
+      return m;
+    }).toList();
+    emit(ChatConnected(chatId: current.chatId, messages: updatedMessages, chats: current.chats));
+  }
+
+  Future<void> _onPusherMessageDeleted(
+    _PusherMessageDeleted event,
+    Emitter<ChatState> emit,
+  ) async {
+    if (state is! ChatConnected) return;
+    final current = state as ChatConnected;
+    final updatedMessages = current.messages.map((m) {
+      if (m.id == event.id) return m.copyWith(content: '', isDeleted: true);
+      return m;
+    }).toList();
+    emit(ChatConnected(chatId: current.chatId, messages: updatedMessages, chats: current.chats));
+  }
+
+  Future<void> _onPusherMessageRead(
+    _PusherMessageRead event,
+    Emitter<ChatState> emit,
+  ) async {
+    if (state is! ChatConnected) return;
+    final current = state as ChatConnected;
+    final updatedMessages = current.messages.map((m) {
+      if (m.senderId != event.readerId) return m.copyWith(isRead: true);
+      return m;
+    }).toList();
+    emit(ChatConnected(chatId: current.chatId, messages: updatedMessages, chats: current.chats));
+  }
+
+  Future<void> _onEditMessageRequested(
+    EditMessageRequested event,
+    Emitter<ChatState> emit,
+  ) async {
+    if (_currentChatId == null) return;
+    try {
+      await getIt<ChatsApi>().editMessage(_currentChatId!, event.messageId, event.newContent);
+      add(_PusherMessageEdited(id: event.messageId, content: event.newContent, editedAt: DateTime.now().toIso8601String()));
+    } catch (e) {
+      emit(ChatError('Erro ao editar mensagem: $e'));
+    }
+  }
+
+  Future<void> _onDeleteMessageRequested(
+    DeleteMessageRequested event,
+    Emitter<ChatState> emit,
+  ) async {
+    if (_currentChatId == null) return;
+    try {
+      await getIt<ChatsApi>().deleteMessage(_currentChatId!, event.messageId);
+      add(_PusherMessageDeleted(id: event.messageId));
+    } catch (e) {
+      emit(ChatError('Erro ao deletar mensagem: $e'));
+    }
+  }
+
+  Future<void> _onMarkChatAsRead(
+    MarkChatAsRead event,
+    Emitter<ChatState> emit,
+  ) async {
+    if (_currentChatId == null) return;
+    try {
+      await getIt<ChatsApi>().markChatAsRead(_currentChatId!);
+    } catch (_) {}
+  }
+
+  Future<void> _onSearchUsersRequested(
+    SearchUsersRequested event,
+    Emitter<ChatState> emit,
+  ) async {
+    try {
+      final users = await getIt<ChatsApi>().searchUsers(event.query);
+      emit(UserSearchResults(users));
+    } catch (e) {
+      emit(ChatError('Erro ao buscar usuários: $e'));
+    }
   }
 } 

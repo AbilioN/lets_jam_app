@@ -6,6 +6,7 @@ import '../../data/models/chat_model.dart';
 import '../bloc/chats_bloc.dart';
 import '../bloc/chats_event.dart';
 import '../bloc/chats_state.dart';
+import 'user_search_page.dart';
 
 class ChatsPage extends StatelessWidget {
   const ChatsPage({super.key});
@@ -17,6 +18,14 @@ class ChatsPage extends StatelessWidget {
         title: const Text('Chats'),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UserSearchPage()),
+        ),
+        tooltip: 'Nova conversa',
+        child: const Icon(Icons.edit),
       ),
       body: BlocProvider(
         create: (context) => getIt<ChatsBloc>()..add(LoadChats()),
